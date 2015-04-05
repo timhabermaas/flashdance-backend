@@ -106,6 +106,7 @@ end
 class Api < Sinatra::Application
   before do
     headers "Access-Control-Allow-Origin" => "*"
+    headers "Content-Type" => "application/json; charset=utf-8"
   end
 
   get "/gigs/:gig_id/seats" do
