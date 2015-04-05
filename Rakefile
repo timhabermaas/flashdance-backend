@@ -4,17 +4,30 @@ require "bundler/setup"
 require "sequel"
 require "logger"
 
-database_url = ENV.fetch("DATABASE_URL") { "postgres://localhost:5432/flashdance_development" }
-DB = Sequel.connect(database_url, :loggers => [Logger.new($stdout)])
-DB.sql_log_level = :debug
+def connect!
+  database_url = ENV.fetch("DATABASE_URL") { "postgres://localhost:5432/flashdance_development" }
+  Kernel.const_set :DB, Sequel.connect(database_url, :loggers => [Logger.new($stdout)])
+  Sequel.extension :migration, :core_extensions
+  DB.sql_log_level = :debug
+end
 
 namespace :db do
   task :migrate do
-    Sequel.extension :migration, :core_extensions
+    connect!
     Sequel::Migrator.run(DB, File.dirname(__FILE__) + '/migrations')
   end
 
+  namespace :test do
+    task :prepare do
+      ENV["DATABASE_URL"] = "postgres://localhost:5432/flashdance_test"
+      connect!
+      Sequel::Migrator.run(DB, File.dirname(__FILE__) + '/migrations')
+    end
+  end
+
   task :seed do
+    connect!
+
     require "models"
 
     DBModels::Row.dataset.delete
