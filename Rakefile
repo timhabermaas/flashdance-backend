@@ -4,29 +4,30 @@ require "bundler/setup"
 require "sequel"
 require "logger"
 
-def connect!
+def connect
   database_url = ENV.fetch("DATABASE_URL") { "postgres://localhost:5432/flashdance_development" }
-  Kernel.const_set :DB, Sequel.connect(database_url, :loggers => [Logger.new($stdout)])
-  Sequel.extension :migration, :core_extensions
-  DB.sql_log_level = :debug
+
+  Sequel.connect(database_url, :loggers => [Logger.new($stdout)]).tap do |c|
+    c.sql_log_level = :debug
+  end
 end
 
 namespace :db do
   task :migrate do
-    connect!
-    Sequel::Migrator.run(DB, File.dirname(__FILE__) + '/migrations')
+    Sequel.extension :migration, :core_extensions
+    Sequel::Migrator.run(connect, File.dirname(__FILE__) + '/migrations')
   end
 
   namespace :test do
     task :prepare do
       ENV["DATABASE_URL"] = "postgres://localhost:5432/flashdance_test"
-      connect!
-      Sequel::Migrator.run(DB, File.dirname(__FILE__) + '/migrations')
+      Sequel.extension :migration, :core_extensions
+      Sequel::Migrator.run(connect, File.dirname(__FILE__) + '/migrations')
     end
   end
 
   task :seed do
-    connect!
+    connect
 
     require "models"
 

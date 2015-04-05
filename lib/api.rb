@@ -3,12 +3,14 @@ require "json"
 require "sequel"
 require "logger"
 
-database_url = ENV.fetch("DATABASE_URL") { "postgres://localhost:5432/flashdance_development" }
-DB = Sequel.connect(database_url, :loggers => [Logger.new($stdout)])
 
-require "models"
 
 class Api < Sinatra::Application
+  def initialize(app)
+    @app = app
+    super()
+  end
+
   before do
     headers "Access-Control-Allow-Origin" => "*"
     headers "Content-Type" => "application/json; charset=utf-8"

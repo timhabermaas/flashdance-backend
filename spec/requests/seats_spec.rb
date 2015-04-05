@@ -6,11 +6,12 @@ RSpec.describe "/gigs/:id/seats" do
 
   context "gig exists" do
     before do
-      row = DBModels::Row.create y: 1, number: 2
-      DBModels::Seat.create x: 1, number: 3, row: row, usable: false
-      DBModels::Seat.create x: 2, number: 4, row: row
+      row = internal_app.handle(Commands::CreateRow.new(y: 1, number: 2))
 
-      gig = DBModels::Gig.create title: "foo", date: DateTime.new(2014, 1, 1)
+      internal_app.handle(Commands::CreateSeat.new(x: 1, number: 3, row_id: row.id, usable: false))
+      internal_app.handle(Commands::CreateSeat.new(x: 2, number: 4, row_id: row.id))
+
+      gig = internal_app.handle(Commands::CreateGig.new(title: "foo", date: DateTime.new(2014, 1, )))
 
       get "/gigs/#{gig.id}/seats"
     end
