@@ -1,5 +1,7 @@
 require "bundler/setup"
 
-require_relative "./api.rb"
+$LOAD_PATH.unshift(File.dirname(__FILE__) + "/lib")
+
+require "api"
 
 run Api.new
