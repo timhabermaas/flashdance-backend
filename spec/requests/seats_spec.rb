@@ -1,51 +1,51 @@
-ENV["DATABASE_URL"] = "postgres://localhost:5432/flashdance_test"
-require "api"
+require "spec_helper"
 require "rack/test"
-
-DB.loggers = []
-
-def app
-  Api.new
-end
-
-def json_response
-  JSON.parse(last_response.body)
-end
-
-def last_status
-  last_response.status
-end
-
 
 RSpec.describe "/gigs/:id/seats" do
   include Rack::Test::Methods
 
-  before(:all) do
-    Sequel.extension :migration, :core_extensions
-    Sequel::Migrator.run(DB, File.dirname(__FILE__) + '/../../migrations')
+  context "gig exists" do
+    before do
+      row = DBModels::Row.create y: 1, number: 2
+      DBModels::Seat.create x: 1, number: 3, row: row, usable: false
+      DBModels::Seat.create x: 2, number: 4, row: row
 
-    DB[:seats].delete
-    DB[:rows].delete
+      gig = DBModels::Gig.create title: "foo", date: DateTime.new(2014, 1, 1)
+
+      get "/gigs/#{gig.id}/seats"
+    end
+
+    it "responds with 200 Ok" do
+      expect(last_status).to eq 200
+    end
+
+    it "returns the seats" do
+      expect(json_response["seats"].size).to eq 2
+      expect(json_response["seats"].first["number"]).to eq 3
+      expect(json_response["seats"].first["x"]).to eq 1
+      expect(json_response["seats"].first["row"]).to eq 2
+      expect(json_response["seats"].first["usable"]).to eq false
+      expect(json_response["seats"].last["number"]).to eq 4
+      expect(json_response["seats"].last["x"]).to eq 2
+      expect(json_response["seats"].last["row"]).to eq 2
+      expect(json_response["seats"].last["usable"]).to eq true
+    end
+
+    it "returns the rows" do
+      expect(json_response["rows"].size).to eq 1
+      expect(json_response["rows"].first["y"]).to eq 1
+      expect(json_response["rows"].first["number"]).to eq 2
+    end
   end
 
-  before do
-    row = DBModels::Row.create y: 1, number: 2
-    DBModels::Seat.create x: 1, number: 3, row: row, usable: false
-    DBModels::Seat.create x: 2, number: 4, row: row
+  context "gig doesn't exist" do
+    before do
+      get "/gigs/10/seats"
+    end
 
-    get "/gigs/4/seats"
-  end
-
-  it "returns the seats" do
-    expect(last_status).to eq 200
-    expect(json_response["seats"].size).to eq 2
-    expect(json_response["seats"].first["number"]).to eq 3
-    expect(json_response["seats"].first["x"]).to eq 1
-    expect(json_response["seats"].first["row"]).to eq 2
-    expect(json_response["seats"].first["usable"]).to eq false
-    expect(json_response["seats"].last["number"]).to eq 4
-    expect(json_response["seats"].last["x"]).to eq 2
-    expect(json_response["seats"].last["row"]).to eq 2
-    expect(json_response["seats"].last["usable"]).to eq true
+    it "responds with 404 Not Found" do
+      expect(last_status).to eq 404
+      expect(json_response["error"]).to eq "not found"
+    end
   end
 end

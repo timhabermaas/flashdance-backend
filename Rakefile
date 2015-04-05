@@ -32,6 +32,15 @@ namespace :db do
 
     DBModels::Row.dataset.delete
     DBModels::Seat.dataset.delete
+    DBModels::Gig.dataset.delete
+
+    3.times do |i|
+      DBModels::Gig.create title: "#{i + 1}. Aufführung", date: DateTime.new(2013, 7, 11 + i, 20, 30, 00, '+1')
+    end
+
+    3.times do |i|
+      DBModels::Gig.create title: "#{i + 4}. Aufführung", date: DateTime.new(2013, 7, 15 + i, 20, 30, 00, '+1')
+    end
 
     16.downto(3) do |i|
       DBModels::Row.create y: (-i + 16), number: i

@@ -15,8 +15,12 @@ class Api < Sinatra::Application
   end
 
   get "/gigs/:gig_id/seats" do
-    status 200
-
-    body JSON.generate({seats: DBModels::Seat.eager(:row).all.map(&:serialize), rows: DBModels::Row.all.map(&:serialize)})
+    if DBModels::Gig[params[:gig_id]]
+      status 200
+      body JSON.generate({seats: DBModels::Seat.eager(:row).all.map(&:serialize), rows: DBModels::Row.all.map(&:serialize)})
+    else
+      status 404
+      body '{"error": "not found"}'
+    end
   end
 end

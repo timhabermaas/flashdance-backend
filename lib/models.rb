@@ -1,4 +1,7 @@
 module DBModels
+  class Gig < Sequel::Model
+  end
+
   class Seat < Sequel::Model
     many_to_one :row
 
