@@ -25,4 +25,9 @@ class Api < Sinatra::Application
       body '{"error": "not found"}'
     end
   end
+
+  get "/gigs" do
+    gigs = DBModels::Gig.order(:date)
+    body JSON.generate(gigs.map(&:serialize))
+  end
 end

@@ -1,5 +1,8 @@
 module DBModels
   class Gig < Sequel::Model
+    def serialize
+      {title: title, date: date.iso8601}
+    end
   end
 
   class Seat < Sequel::Model
