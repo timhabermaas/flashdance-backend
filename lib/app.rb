@@ -1,3 +1,5 @@
+require "command_handlers"
+
 class App
   def initialize(database_url, logging=true)
     loggers = logging ? [Logger.new($stdout)] : []
@@ -19,17 +21,13 @@ class App
     @connection[:gigs].delete
   end
 
+  def migrate!
+    Sequel.extension :migration, :core_extensions
+    Sequel::Migrator.run(connect, File.dirname(__FILE__) + '/../migrations')
+  end
+
   private
     def handler(&block)
-      handler = Class.new do
-        def initialize(block)
-          @block = block
-        end
-
-        def handle(command)
-          @block.call(command)
-        end
-      end
-      handler.new(block)
+      CommandHandlers::GenericHandler.new(&block)
     end
 end
