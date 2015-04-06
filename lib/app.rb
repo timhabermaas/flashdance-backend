@@ -1,9 +1,14 @@
 require "command_handlers"
+require "commands"
+
+require "sequel"
 
 class App
   def initialize(database_url, logging=true)
     loggers = logging ? [Logger.new($stdout)] : []
     @connection = Sequel.connect(database_url, loggers: loggers)
+    Sequel.application_timezone = "Berlin"
+    Sequel.database_timezone = "UTC"
     require "models"
   end
 
