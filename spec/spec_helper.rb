@@ -23,11 +23,6 @@ end
 RSpec.configure do |config|
   config.include IntegrationHelpers
 
-  config.before do
-    # FIXME this is a hack to require the models file
-    internal_app
-  end
-
   config.after do
     internal_app.clean_db!
   end
