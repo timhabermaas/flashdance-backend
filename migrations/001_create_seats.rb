@@ -1,14 +1,16 @@
 Sequel.migration do
   up do
+    run 'CREATE EXTENSION "uuid-ossp"'
+
     create_table(:rows) do
-      primary_key :id
+      column :id, :uuid, default: Sequel.function(:uuid_generate_v4), primary_key: true
       Integer :number, null: false
       Integer :y, null: false
     end
 
     create_table(:seats) do
-      primary_key :id
-      Integer :row_id, null: false
+      column :id, :uuid, default: Sequel.function(:uuid_generate_v4), primary_key: true
+      column :row_id, :uuid, null: false
       Integer :number, null: false
       Integer :x, null: false
       Boolean :usable, null: false, default: true

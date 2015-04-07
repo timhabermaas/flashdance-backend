@@ -24,4 +24,7 @@ module DBModels
       {y: y, number: number}
     end
   end
+
+  class Event < Sequel::Model
+  end
 end
