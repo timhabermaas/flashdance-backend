@@ -6,6 +6,10 @@ require "logger"
 
 
 class Api < Sinatra::Application
+  configure :production do
+    require "newrelic_rpm"
+  end
+
   def initialize(app)
     @app = app
     super()

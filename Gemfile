@@ -12,6 +12,8 @@ gem 'sequel'
 
 gem 'rake'
 
+gem 'newrelic_rpm'
+
 group :test do
   gem 'rspec'
   gem 'rack-test'
