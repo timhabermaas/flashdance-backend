@@ -22,8 +22,11 @@ class App
   def answer(query)
     {
       Queries::ListOrdersForGig => answerer { |q|
-        orders = fetch_events.reduce({}, &self.method(:update_orders))
+        orders = fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_orders))
         orders[q.gig_id]
+      },
+      Queries::ListReservationsForGig => answerer { |q|
+        fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
       }
     }.fetch(query.class).answer(query)
   end
@@ -66,10 +69,19 @@ class App
       QueryHandlers::GenericHandler.new(&block)
     end
 
+    def update_reservations(reservations, event)
+      case event
+      when Events::SeatsReserved
+        reservations[event.aggregate_id] += event.seat_ids.map { |s| ReadModels::Reservation.new(s) }
+        reservations
+      else
+        reservations
+      end
+    end
+
     def update_orders(orders, event)
       case event
       when Events::OrderPlaced
-        orders[event.gig_id] ||= []
         orders[event.gig_id] << ReadModels::Order.new(event.name, event.email, event.seat_ids)
         orders
       else

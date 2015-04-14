@@ -28,5 +28,12 @@ RSpec.describe "/gigs/:id/orders" do
       expect(json_response.first["email"]).to eq "peter@heinzelmann.de"
       expect(json_response.first["seat_ids"]).to eq [@id_1, @id_2]
     end
+
+    it "adds the reservations" do
+      get "/gigs/#{gig_id}/reservations"
+
+      expect(json_response.size).to eq 2
+      expect(json_response.map { |r| r["seat_id"] }).to match_array [@id_1, @id_2]
+    end
   end
 end

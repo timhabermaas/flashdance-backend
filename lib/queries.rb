@@ -6,4 +6,8 @@ module Queries
   class ListOrdersForGig < AbstractQuery
     attribute :gig_id, String
   end
+
+  class ListReservationsForGig < AbstractQuery
+    attribute :gig_id, String
+  end
 end

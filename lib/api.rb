@@ -57,4 +57,10 @@ class Api < Sinatra::Application
 
     body JSON.generate(orders.map(&:serialize))
   end
+
+  get "/gigs/:gig_id/reservations" do
+    reservations = @app.answer(Queries::ListReservationsForGig.new(gig_id: params[:gig_id]))
+
+    body JSON.generate(reservations.map(&:serialize))
+  end
 end

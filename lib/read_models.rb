@@ -16,4 +16,18 @@ module ReadModels
       }
     end
   end
+
+  class Reservation
+    attr_reader :seat_id
+
+    def initialize(seat_id)
+      @seat_id = seat_id
+    end
+
+    def serialize
+      {
+        seat_id: seat_id
+      }
+    end
+  end
 end
