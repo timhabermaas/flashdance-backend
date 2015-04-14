@@ -37,6 +37,10 @@ RSpec.configure do |config|
   config.include IntegrationHelpers
   config.include FixtureHelpers
 
+  config.before do
+    internal_app.load_models!
+  end
+
   config.after do
     internal_app.clean_db!
   end

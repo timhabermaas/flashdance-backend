@@ -16,6 +16,10 @@ class App
     Sequel.application_timezone = "Berlin"
     Sequel.database_timezone = "UTC"
     Sequel::Model.plugin :timestamps
+  end
+
+  # FIXME Remove this method by not using Sequel models.
+  def load_models!
     require "models"
   end
 

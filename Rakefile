@@ -48,6 +48,7 @@ namespace :db do
     app = build_app
 
     app.clean_db!
+    app.load_models!
 
 
     16.downto(3) do |i|
