@@ -19,6 +19,7 @@ RSpec.describe "/gigs" do
   it "returns all gigs ordered by date" do
     expect(json_response.size).to eq 3
     expect(json_response.map { |g| g["title"] }).to eq ["1. gig", "2. gig", "3. gig"]
+    expect(json_response.first["id"]).to be_a(String)
     expect(DateTime.parse(json_response.first["date"])).to eq DateTime.new(2014, 2, 3, 11, 30)
   end
 end
