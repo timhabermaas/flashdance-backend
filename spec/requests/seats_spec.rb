@@ -11,9 +11,9 @@ RSpec.describe "/gigs/:id/seats" do
       internal_app.handle(Commands::CreateSeat.new(x: 1, number: 3, row_id: row.id, usable: false))
       internal_app.handle(Commands::CreateSeat.new(x: 2, number: 4, row_id: row.id))
 
-      gig = internal_app.handle(Commands::CreateGig.new(title: "foo", date: DateTime.new(2014, 1, )))
+      gig_id = create_gig
 
-      get "/gigs/#{gig.id}/seats"
+      get "/gigs/#{gig_id}/seats"
     end
 
     it "responds with 200 Ok" do
@@ -41,7 +41,7 @@ RSpec.describe "/gigs/:id/seats" do
 
   context "gig doesn't exist" do
     before do
-      get "/gigs/10/seats"
+      get "/gigs/#{SecureRandom.uuid}/seats"
     end
 
     it "responds with 404 Not Found" do

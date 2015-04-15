@@ -48,14 +48,8 @@ namespace :db do
     app = build_app
 
     app.clean_db!
+    app.load_models!
 
-    3.times do |i|
-      create_gig app, title: "#{i + 1}. Aufführung", date: DateTime.new(2013, 7, 11 + i, 20, 30, 00, '+1')
-    end
-
-    3.times do |i|
-      create_gig app, title: "#{i + 4}. Aufführung", date: DateTime.new(2013, 7, 15 + i, 20, 30, 00, '+1')
-    end
 
     16.downto(3) do |i|
       create_row app, y: (-i + 16), number: i
@@ -117,6 +111,14 @@ namespace :db do
       seat = DBModels::Seat.all.find { |s| s.number == number && s.row.number == row }
       seat.unusable!
       seat.save
+    end
+
+    3.times do |i|
+      create_gig app, title: "#{i + 1}. Aufführung", date: DateTime.new(2013, 7, 11 + i, 20, 30, 00, '+1')
+    end
+
+    3.times do |i|
+      create_gig app, title: "#{i + 4}. Aufführung", date: DateTime.new(2013, 7, 15 + i, 20, 30, 00, '+1')
     end
   end
 end

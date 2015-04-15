@@ -6,13 +6,23 @@ require "logger"
 
 
 class Api < Sinatra::Application
+  set :show_exceptions, false
+  set :raise_errors, true
+  set :dump_errors, false
+
   configure :production do
     require "newrelic_rpm"
   end
 
   def initialize(app)
-    @app = app
     super()
+    @app = app
+  end
+
+  not_found do
+    status 404
+    headers "Content-Type" => "application/json; charset=utf-8"
+    body '{"error": "not found"}'
   end
 
   before do
@@ -33,5 +43,24 @@ class Api < Sinatra::Application
   get "/gigs" do
     gigs = DBModels::Gig.order(:date)
     body JSON.generate(gigs.map(&:serialize))
+  end
+
+  post "/gigs/:gig_id/orders" do
+    r = JSON.parse(request.body.read)
+    r = r.merge(gig_id: params[:gig_id])
+    @app.handle(Commands::SubmitOrder.new(r))
+    status 201
+  end
+
+  get "/gigs/:gig_id/orders" do
+    orders = @app.answer(Queries::ListOrdersForGig.new(gig_id: params[:gig_id]))
+
+    body JSON.generate(orders.map(&:serialize))
+  end
+
+  get "/gigs/:gig_id/reservations" do
+    reservations = @app.answer(Queries::ListReservationsForGig.new(gig_id: params[:gig_id]))
+
+    body JSON.generate(reservations.map(&:serialize))
   end
 end

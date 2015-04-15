@@ -1,7 +1,7 @@
 Sequel.migration do
   up do
     create_table(:gigs) do
-      primary_key :id
+      column :id, :uuid, default: Sequel.function(:uuid_generate_v4), primary_key: true
       String :title, null: false
       DateTime :date, null: false
     end
