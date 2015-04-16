@@ -47,7 +47,7 @@ class Api < Sinatra::Application
 
   post "/gigs/:gig_id/orders" do
     r = JSON.parse(request.body.read)
-    r = r.merge(gig_id: params[:gig_id])
+    r = r.merge(gig_id: params[:gig_id], seat_ids: r["seatIds"])
     @app.handle(Commands::SubmitOrder.new(r))
     status 201
   end

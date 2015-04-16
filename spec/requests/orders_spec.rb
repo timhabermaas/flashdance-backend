@@ -13,7 +13,7 @@ RSpec.describe "/gigs/:id/orders" do
       @id_2 = create_seat.id
       post "/gigs/#{gig_id}/orders", JSON.generate({email: "peter@heinzelmann.de",
                                                     name: "Peter Heinzelmann",
-                                                    seat_ids: [@id_1, @id_2]})
+                                                    seatIds: [@id_1, @id_2]})
     end
 
     it "returns 201 Created" do
@@ -26,14 +26,14 @@ RSpec.describe "/gigs/:id/orders" do
       expect(json_response.size).to eq 1
       expect(json_response.first["name"]).to eq "Peter Heinzelmann"
       expect(json_response.first["email"]).to eq "peter@heinzelmann.de"
-      expect(json_response.first["seat_ids"]).to eq [@id_1, @id_2]
+      expect(json_response.first["seatIds"]).to eq [@id_1, @id_2]
     end
 
     it "adds the reservations" do
       get "/gigs/#{gig_id}/reservations"
 
       expect(json_response.size).to eq 2
-      expect(json_response.map { |r| r["seat_id"] }).to match_array [@id_1, @id_2]
+      expect(json_response.map { |r| r["seatId"] }).to match_array [@id_1, @id_2]
     end
   end
 end

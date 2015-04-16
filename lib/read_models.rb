@@ -12,7 +12,7 @@ module ReadModels
       {
         name: name,
         email: email,
-        seat_ids: seat_ids
+        seatIds: seat_ids
       }
     end
   end
@@ -26,7 +26,7 @@ module ReadModels
 
     def serialize
       {
-        seat_id: seat_id
+        seatId: seat_id
       }
     end
   end
