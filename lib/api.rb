@@ -19,15 +19,21 @@ class Api < Sinatra::Application
     @app = app
   end
 
+  before do
+    headers "Access-Control-Allow-Origin" => "*"
+    headers "Access-Control-Allow-Methods" => "GET,PUT,POST,DELETE"
+    headers "Access-Control-Allow-Credentials" => "true"
+    headers "Access-Control-Allow-Headers" => "Last-Event-Id, Origin, X-Requested-With, Content-Type, Accept, Authorization"
+
+    headers "Content-Type" => "application/json; charset=utf-8"
+
+    halt 200 if request.request_method == "OPTIONS"
+  end
+
   not_found do
     status 404
     headers "Content-Type" => "application/json; charset=utf-8"
     body '{"error": "not found"}'
-  end
-
-  before do
-    headers "Access-Control-Allow-Origin" => "*"
-    headers "Content-Type" => "application/json; charset=utf-8"
   end
 
   get "/gigs/:gig_id/seats" do
