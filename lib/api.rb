@@ -50,6 +50,7 @@ class Api < Sinatra::Application
     r = r.merge(gig_id: params[:gig_id], seat_ids: r["seatIds"])
     @app.handle(Commands::SubmitOrder.new(r))
     status 201
+    body JSON.generate({})
   end
 
   get "/gigs/:gig_id/orders" do
