@@ -30,4 +30,17 @@ module ReadModels
       }
     end
   end
+
+  class Gig < SimpleDelegator
+    attr_reader :free_seats
+
+    def initialize(gig, free_seats)
+      super(gig)
+      @free_seats = free_seats
+    end
+
+    def serialize
+      __getobj__.serialize.merge(freeSeats: @free_seats)
+    end
+  end
 end

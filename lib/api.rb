@@ -42,6 +42,7 @@ class Api < Sinatra::Application
 
   get "/gigs" do
     gigs = DBModels::Gig.order(:date)
+    gigs = gigs.map { |g| ReadModels::Gig.new(g, @app.answer(Queries::GetFreeSeats.new(gig_id: g.id))) }
     body JSON.generate(gigs.map(&:serialize))
   end
 

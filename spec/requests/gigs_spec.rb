@@ -5,9 +5,13 @@ RSpec.describe "/gigs" do
   include Rack::Test::Methods
 
   before do
-    internal_app.handle(Commands::CreateGig.new(title: "1. gig", date: DateTime.new(2014, 2, 3, 12, 30, 00, '+1')))
+    id = internal_app.handle(Commands::CreateGig.new(title: "1. gig", date: DateTime.new(2014, 2, 3, 12, 30, 00, '+1'))).id
     internal_app.handle(Commands::CreateGig.new(title: "3. gig", date: DateTime.new(2014, 2, 5, 15, 30, 00, '+1')))
     internal_app.handle(Commands::CreateGig.new(title: "2. gig", date: DateTime.new(2014, 2, 4, 15, 30, 00, '+1')))
+
+    3.times { create_seat }
+    seat_id = create_seat.id
+    internal_app.handle(Commands::SubmitOrder.new(gig_id: id, name: "Max Mustermann", email: "fo@bar.com", seat_ids: [seat_id]))
 
     get "/gigs"
   end
@@ -21,5 +25,9 @@ RSpec.describe "/gigs" do
     expect(json_response.map { |g| g["title"] }).to eq ["1. gig", "2. gig", "3. gig"]
     expect(json_response.first["id"]).to be_a(String)
     expect(DateTime.parse(json_response.first["date"])).to eq DateTime.new(2014, 2, 3, 11, 30)
+  end
+
+  it "returns the amount of free seats" do
+    expect(json_response.first["freeSeats"]).to eq 3
   end
 end

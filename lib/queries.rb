@@ -10,4 +10,8 @@ module Queries
   class ListReservationsForGig < AbstractQuery
     attribute :gig_id, String
   end
+
+  class GetFreeSeats < AbstractQuery
+    attribute :gig_id, String
+  end
 end

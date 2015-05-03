@@ -29,7 +29,7 @@ module FixtureHelpers
 
   def create_seat
     row = internal_app.handle(Commands::CreateRow.new(y: 1, number: 2))
-    internal_app.handle(Commands::CreateSeat.new(x: 1, number: 3, row_id: row.id, usable: false))
+    internal_app.handle(Commands::CreateSeat.new(x: 1, number: 3, row_id: row.id, usable: true))
   end
 end
 

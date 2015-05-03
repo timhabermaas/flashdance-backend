@@ -31,6 +31,11 @@ class App
       },
       Queries::ListReservationsForGig => answerer { |q|
         fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
+      },
+      Queries::GetFreeSeats => answerer { |q|
+        reserved_seats = fetch_events.reduce(Hash.new { |h, key| h[key] = 0 }, &self.method(:update_reserved_seats))[q.gig_id]
+        all_seats = DBModels::Seat.where(usable: true).count
+        all_seats - reserved_seats
       }
     }.fetch(query.class).answer(query)
   end
@@ -80,6 +85,16 @@ class App
         reservations
       else
         reservations
+      end
+    end
+
+    def update_reserved_seats(seats, event)
+      case event
+      when Events::SeatsReserved
+        seats[event.aggregate_id] += event.seat_ids.size
+        seats
+      else
+        seats
       end
     end
 
