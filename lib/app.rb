@@ -33,7 +33,7 @@ class App
         fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
       },
       Queries::GetFreeSeats => answerer { |q|
-        reserved_seats = fetch_events.reduce(Hash.new { |h, key| h[key] = 0 }, &self.method(:update_reserved_seats))[q.gig_id]
+        reserved_seats = fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = 0 }, &self.method(:update_reserved_seats))[q.gig_id]
         all_seats = DBModels::Seat.where(usable: true).count
         all_seats - reserved_seats
       }
@@ -109,10 +109,16 @@ class App
     end
 
     def fetch_events
-      DBModels::Event.order(:created_at).map do |event|
-        klass = Object.const_get(event[:type])
-        body = JSON.parse(event[:body])
-        klass.new(body.merge(aggregate_id: event[:aggregate_id]))
-      end
+      DBModels::Event.order(:created_at).map(&method(:deserialize_event))
+    end
+
+    def fetch_events_for(aggregate_id:)
+      DBModels::Event.where(aggregate_id: aggregate_id).order(:created_at).map(&method(:deserialize_event))
+    end
+
+    def deserialize_event(event_hash)
+      klass = Object.const_get(event_hash[:type])
+      body = JSON.parse(event_hash[:body])
+      klass.new(body.merge(aggregate_id: event_hash[:aggregate_id]))
     end
 end
