@@ -54,8 +54,34 @@ class Api < Sinatra::Application
 
   post "/gigs/:gig_id/orders" do
     r = JSON.parse(request.body.read)
+
+    if r["email"].nil? || r["email"].empty?
+      status 422
+      body JSON.generate({errors: [{attribute: "email", code: "missing_field", message: "missing attribute `email`"}]})
+      return
+    end
+
+    if r["name"].nil? || r["name"].empty?
+      status 422
+      body JSON.generate({errors: [{attribute: "name", code: "missing_field", message: "missing attribute `name`"}]})
+      return
+    end
+
+    if r["seatIds"].nil? || r["seatIds"].empty?
+      status 422
+      body JSON.generate({errors: [{attribute: "seatIds", code: "missing_field", message: "missing attribute `seatIds`"}]})
+      return
+    end
+
     r = r.merge(gig_id: params[:gig_id], seat_ids: r["seatIds"])
-    @app.handle(Commands::SubmitOrder.new(r))
+    begin
+      @app.handle(Commands::SubmitOrder.new(r))
+    rescue App::SeatsReserved => e
+      status 422
+      body JSON.generate({errors: [{attribute: "seatIds", code: "already_exists", message: "Some seats are already reserved"}]})
+      return
+    end
+
     status 201
     body JSON.generate({})
   end

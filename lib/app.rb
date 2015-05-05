@@ -10,6 +10,10 @@ require "securerandom"
 
 
 class App
+  class DomainError < StandardError; end
+  class SeatsReserved < DomainError
+  end
+
   def initialize(database_url, logging=true)
     loggers = logging ? [Logger.new($stdout)] : []
     @connection = Sequel.connect(database_url, loggers: loggers)
@@ -46,6 +50,10 @@ class App
       Commands::CreateSeat => handler { |c| DBModels::Seat.create(x: c.x, number: c.number, usable: c.usable, row_id: c.row_id) },
       Commands::CreateGig => handler { |c| DBModels::Gig.create(title: c.title, date: c.date) },
       Commands::SubmitOrder => handler do |c|
+        reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[c.gig_id]
+        if reservations.map(&:seat_id) & c.seat_ids != []
+          raise SeatsReserved.new(reservations.map(&:seat_id) & c.seat_ids)
+        end
         events = []
         order_id = SecureRandom.uuid
         events << Events::OrderPlaced.new(aggregate_id: SecureRandom.uuid, gig_id: c.gig_id, seat_ids: c.seat_ids, name: c.name, email: c.email)
