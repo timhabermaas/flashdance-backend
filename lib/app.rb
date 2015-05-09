@@ -56,10 +56,19 @@ class App
         end
         events = []
         order_id = SecureRandom.uuid
-        events << Events::OrderPlaced.new(aggregate_id: SecureRandom.uuid, gig_id: c.gig_id, seat_ids: c.seat_ids, name: c.name, email: c.email)
+        events << Events::OrderPlaced.new(aggregate_id: order_id, gig_id: c.gig_id, seat_ids: c.seat_ids, name: c.name, email: c.email)
         events << Events::SeatsReserved.new(aggregate_id: c.gig_id, order_id: order_id, seat_ids: c.seat_ids)
         events.each do |e|
-          DBModels::Event.create(aggregate_id: e.aggregate_id, type: e.class.to_s, user_id: nil, body: JSON.generate(e.serialize))
+          persist_event(e)
+        end
+        return order_id
+      end,
+      Commands::PayOrder => handler do |c|
+        events = fetch_events_for(aggregate_id: c.order_id)
+        if events.empty?
+          raise ArgumentError
+        else
+          persist_event(Events::OrderPaid.new(aggregate_id: c.order_id))
         end
       end
     }.fetch(command.class).handle(command)
@@ -109,8 +118,17 @@ class App
     def update_orders(orders, event)
       case event
       when Events::OrderPlaced
-        orders[event.gig_id] << ReadModels::Order.new(event.name, event.email, event.seat_ids)
+        orders[event.gig_id] << ReadModels::Order.new(event.aggregate_id, event.name, event.email, event.seat_ids, false)
         orders
+      when Events::OrderPaid
+        all_orders = orders.map { |key, value| [key, value] }
+        orders.each do |gig_id, orders|
+          orders.each do |order|
+            if order.id == event.aggregate_id
+              order.pay!
+            end
+          end
+        end
       else
         orders
       end
@@ -122,6 +140,13 @@ class App
 
     def fetch_events_for(aggregate_id:)
       DBModels::Event.where(aggregate_id: aggregate_id).order(:created_at).map(&method(:deserialize_event))
+    end
+
+    def persist_event(event)
+      DBModels::Event.create(aggregate_id: event.aggregate_id,
+                             type: event.class.to_s,
+                             user_id: nil,
+                             body: JSON.generate(event.serialize))
     end
 
     def deserialize_event(event_hash)

@@ -47,11 +47,9 @@ module Events
     end
   end
 
-  class SeatsFreed < AbstractEvent
-    attribute :seat_ids, Array[String]
-
+  class OrderPaid < AbstractEvent
     def serialize
-      {seat_ids: seat_ids}
+      {}
     end
   end
 end

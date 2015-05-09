@@ -75,15 +75,25 @@ class Api < Sinatra::Application
 
     r = r.merge(gig_id: params[:gig_id], seat_ids: r["seatIds"])
     begin
-      @app.handle(Commands::SubmitOrder.new(r))
+      order_id = @app.handle(Commands::SubmitOrder.new(r))
+
+      status 201
+      body JSON.generate({name: r["name"], id: order_id, email: r["email"], seatIds: r["seatIds"]})
     rescue App::SeatsReserved => e
       status 422
       body JSON.generate({errors: [{attribute: "seatIds", code: "already_exists", message: "Some seats are already reserved"}]})
-      return
     end
+  end
 
-    status 201
-    body JSON.generate({})
+  put "/orders/:order_id/pay" do
+    begin
+      @app.handle(Commands::PayOrder.new(order_id: params["order_id"]))
+      status 200
+      body JSON.generate({})
+    rescue ArgumentError
+      status 404
+      body '{"error": "not found"}'
+    end
   end
 
   get "/gigs/:gig_id/orders" do

@@ -1,19 +1,26 @@
 module ReadModels
   class Order
-    attr_reader :name, :email, :seat_ids
+    attr_reader :id, :name, :email, :seat_ids, :paid
 
-    def initialize(name, email, seat_ids)
+    def initialize(id, name, email, seat_ids, paid)
+      @id = id
       @name = name
       @email = email
       @seat_ids = seat_ids
+      @paid = paid
     end
 
     def serialize
       {
         name: name,
         email: email,
-        seatIds: seat_ids
+        seatIds: seat_ids,
+        paid: paid
       }
+    end
+
+    def pay!
+      @paid = true
     end
   end
 

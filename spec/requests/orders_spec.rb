@@ -2,17 +2,17 @@ require "spec_helper"
 
 require "rack/test"
 
-RSpec.describe "/gigs/:id/orders" do
+RSpec.describe "orders API endpoint" do
   include Rack::Test::Methods
 
+  before do
+    @id_1 = create_seat.id
+    @id_2 = create_seat.id
+  end
+
+  let(:gig_id) { create_gig }
+
   describe "POST /gigs/:id/orders" do
-    before do
-      @id_1 = create_seat.id
-      @id_2 = create_seat.id
-    end
-
-    let(:gig_id) { create_gig }
-
     context "valid order" do
       before do
         post "/gigs/#{gig_id}/orders", JSON.generate({email: "peter@heinzelmann.de",
@@ -38,6 +38,13 @@ RSpec.describe "/gigs/:id/orders" do
 
         expect(json_response.size).to eq 2
         expect(json_response.map { |r| r["seatId"] }).to match_array [@id_1, @id_2]
+      end
+
+      it "returns a representation of the order" do
+        expect(json_response["name"]).to eq "Peter Heinzelmann"
+        expect(json_response["email"]).to eq "peter@heinzelmann.de"
+        expect(json_response["seatIds"]).to match_array [@id_1, @id_2]
+        expect(json_response["id"]).to be_a(String)
       end
     end
 
@@ -108,6 +115,46 @@ RSpec.describe "/gigs/:id/orders" do
           expect(json_response["errors"].first["code"]).to eq "already_exists"
         end
       end
+    end
+  end
+
+  describe "PUT /orders/:id/pay" do
+    context "order doesn't exist" do
+      before do
+        put "/orders/#{SecureRandom.uuid}/pay"
+      end
+
+      it "returns 404 not found" do
+        expect(last_status).to eq 404
+      end
+
+      it "returns a json response containing 'not found'" do
+        expect(json_response["error"]).to eq "not found"
+      end
+    end
+
+    context "order isn't paid yet" do
+      before do
+        post "/gigs/#{gig_id}/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                                      name: "Peter Heinzelmann",
+                                                      seatIds: [@id_1, @id_2]})
+        order_id = json_response["id"]
+        put "/orders/#{order_id}/pay"
+      end
+
+      it "returns 200 Ok" do
+        expect(last_status).to eq 200
+      end
+
+      it "sets the order to paid" do
+        get "/gigs/#{gig_id}/orders"
+
+        expect(json_response.first["paid"]).to eq true
+      end
+    end
+
+    context "order is already paid" do
+      pending
     end
   end
 end

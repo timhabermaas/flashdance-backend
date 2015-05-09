@@ -28,4 +28,8 @@ module Commands
     attribute :email, String
     attribute :seat_ids, Array[String]
   end
+
+  class PayOrder < AbstractCommand
+    attribute :order_id, String
+  end
 end
