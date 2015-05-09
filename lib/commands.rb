@@ -27,6 +27,7 @@ module Commands
     attribute :name, String
     attribute :email, String
     attribute :seat_ids, Array[String]
+    attribute :reduced_count, Integer
   end
 
   class PayOrder < AbstractCommand

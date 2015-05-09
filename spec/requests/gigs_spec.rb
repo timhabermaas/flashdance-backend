@@ -11,7 +11,7 @@ RSpec.describe "/gigs" do
 
     3.times { create_seat }
     seat_id = create_seat.id
-    internal_app.handle(Commands::SubmitOrder.new(gig_id: id, name: "Max Mustermann", email: "fo@bar.com", seat_ids: [seat_id]))
+    internal_app.handle(Commands::SubmitOrder.new(gig_id: id, name: "Max Mustermann", email: "fo@bar.com", seat_ids: [seat_id], reduced_count: 0))
 
     get "/gigs"
   end

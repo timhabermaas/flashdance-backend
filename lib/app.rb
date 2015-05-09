@@ -56,7 +56,7 @@ class App
         end
         events = []
         order_id = SecureRandom.uuid
-        events << Events::OrderPlaced.new(aggregate_id: order_id, gig_id: c.gig_id, seat_ids: c.seat_ids, name: c.name, email: c.email)
+        events << Events::OrderPlaced.new(aggregate_id: order_id, gig_id: c.gig_id, seat_ids: c.seat_ids, name: c.name, email: c.email, reduced_count: c.reduced_count)
         events << Events::SeatsReserved.new(aggregate_id: c.gig_id, order_id: order_id, seat_ids: c.seat_ids)
         events.each do |e|
           persist_event(e)
@@ -118,7 +118,7 @@ class App
     def update_orders(orders, event)
       case event
       when Events::OrderPlaced
-        orders[event.gig_id] << ReadModels::Order.new(event.aggregate_id, event.name, event.email, event.seat_ids, false)
+        orders[event.gig_id] << ReadModels::Order.new(event.aggregate_id, event.name, event.email, event.seat_ids, false, event.reduced_count)
         orders
       when Events::OrderPaid
         all_orders = orders.map { |key, value| [key, value] }

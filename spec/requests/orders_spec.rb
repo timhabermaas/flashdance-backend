@@ -17,7 +17,8 @@ RSpec.describe "orders API endpoint" do
       before do
         post "/gigs/#{gig_id}/orders", JSON.generate({email: "peter@heinzelmann.de",
                                                       name: "Peter Heinzelmann",
-                                                      seatIds: [@id_1, @id_2]})
+                                                      seatIds: [@id_1, @id_2],
+                                                      reducedCount: 1})
       end
 
       it "returns 201 Created" do
@@ -31,6 +32,7 @@ RSpec.describe "orders API endpoint" do
         expect(json_response.first["name"]).to eq "Peter Heinzelmann"
         expect(json_response.first["email"]).to eq "peter@heinzelmann.de"
         expect(json_response.first["seatIds"]).to eq [@id_1, @id_2]
+        expect(json_response.first["reducedCount"]).to eq 1
       end
 
       it "adds the reservations" do
@@ -44,6 +46,7 @@ RSpec.describe "orders API endpoint" do
         expect(json_response["name"]).to eq "Peter Heinzelmann"
         expect(json_response["email"]).to eq "peter@heinzelmann.de"
         expect(json_response["seatIds"]).to match_array [@id_1, @id_2]
+        expect(json_response["reducedCount"]).to eq 1
         expect(json_response["id"]).to be_a(String)
       end
     end
@@ -65,16 +68,19 @@ RSpec.describe "orders API endpoint" do
       let(:email) { "foo@bar.com" }
       let(:name) { "Max Mustermann" }
       let(:seat_ids) { [@id_2] }
+      let(:reduced_count) { 1 }
 
       before do
         # FIXME having this here is kinda wasteful. It's actually just needed
         #       for the "seat already reserved" case
         post "/gigs/#{gig_id}/orders", JSON.generate({email: email,
                                                       name: name,
-                                                      seatIds: [@id_1]})
+                                                      seatIds: [@id_1],
+                                                      reducedCount: 0})
         post "/gigs/#{gig_id}/orders", JSON.generate({email: email,
                                                       name: name,
-                                                      seatIds: seat_ids})
+                                                      seatIds: seat_ids,
+                                                      reducedCount: reduced_count})
       end
 
       context "missing email" do
@@ -87,6 +93,12 @@ RSpec.describe "orders API endpoint" do
         let(:name) { nil }
 
         it_behaves_like "missing attribute", "name", "missing attribute `name`"
+      end
+
+      context "missing reducedCount" do
+        let(:reduced_count) { nil }
+
+        it_behaves_like "missing attribute", "reducedCount", "missing attribute `reducedCount`"
       end
 
       context "empty seatIds" do
@@ -137,7 +149,8 @@ RSpec.describe "orders API endpoint" do
       before do
         post "/gigs/#{gig_id}/orders", JSON.generate({email: "peter@heinzelmann.de",
                                                       name: "Peter Heinzelmann",
-                                                      seatIds: [@id_1, @id_2]})
+                                                      seatIds: [@id_1, @id_2],
+                                                      reducedCount: 1})
         order_id = json_response["id"]
         put "/orders/#{order_id}/pay"
       end

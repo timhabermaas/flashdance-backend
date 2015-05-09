@@ -24,13 +24,15 @@ module Events
     attribute :email, String
     attribute :seat_ids, Array[String]
     attribute :gig_id, String
+    attribute :reduced_count, Integer
 
     def serialize
       {
         name: name,
         email: email,
         seat_ids: seat_ids,
-        gig_id: gig_id
+        gig_id: gig_id,
+        reduced_count: reduced_count
       }
     end
   end
