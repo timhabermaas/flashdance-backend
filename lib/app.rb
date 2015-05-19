@@ -135,11 +135,11 @@ class App
     end
 
     def fetch_events
-      DBModels::Event.order(:created_at).map(&method(:deserialize_event))
+      DBModels::Event.order(:global_version).map(&method(:deserialize_event))
     end
 
     def fetch_events_for(aggregate_id:)
-      DBModels::Event.where(aggregate_id: aggregate_id).order(:created_at).map(&method(:deserialize_event))
+      DBModels::Event.where(aggregate_id: aggregate_id).order(:global_version).map(&method(:deserialize_event))
     end
 
     def persist_event(event)
