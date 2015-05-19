@@ -33,4 +33,9 @@ module Commands
   class PayOrder < AbstractCommand
     attribute :order_id, String
   end
+
+  class StartOrder < AbstractCommand
+    attribute :name, String
+    attribute :email, String
+  end
 end

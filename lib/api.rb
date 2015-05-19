@@ -52,6 +52,13 @@ class Api < Sinatra::Application
     body JSON.generate(gigs.map(&:serialize))
   end
 
+  post "/orders" do
+    r = JSON.parse(request.body.read)
+    @app.handle(Commands::StartOrder.new(name: r["name"], email: r["email"]))
+    status 201
+    body JSON.generate({orderId: "foo"})
+  end
+
   post "/gigs/:gig_id/orders" do
     r = JSON.parse(request.body.read)
 

@@ -37,9 +37,6 @@ module Events
     end
   end
 
-  class OrderPaid < AbstractEvent
-  end
-
   class SeatsReserved < AbstractEvent
     attribute :seat_ids, Array[String]
     attribute :order_id, String
@@ -50,6 +47,12 @@ module Events
   end
 
   class OrderPaid < AbstractEvent
+    def serialize
+      {}
+    end
+  end
+
+  class OrderStarted < AbstractEvent
     def serialize
       {}
     end

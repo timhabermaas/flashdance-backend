@@ -70,6 +70,11 @@ class App
         else
           persist_event(Events::OrderPaid.new(aggregate_id: c.order_id))
         end
+      end,
+      Commands::StartOrder => handler do |c|
+        order_id = SecureRandom.uuid
+        persist_event(Events::OrderStarted.new(aggregate_id: order_id))
+        order_id
       end
     }.fetch(command.class).handle(command)
   end

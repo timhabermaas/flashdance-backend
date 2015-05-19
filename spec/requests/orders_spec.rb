@@ -12,6 +12,23 @@ RSpec.describe "orders API endpoint" do
 
   let(:gig_id) { create_gig }
 
+  describe "POST /orders" do
+    context "valid order" do
+      before do
+        post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                       name: "Peter Heinzelmann"})
+      end
+
+      it "returns 201 Created" do
+        expect(last_status).to eq 201
+      end
+
+      it "returns an order id" do
+        expect(json_response["orderId"]).to be_a(String)
+      end
+    end
+  end
+
   describe "POST /gigs/:id/orders" do
     context "valid order" do
       before do
