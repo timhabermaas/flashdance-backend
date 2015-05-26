@@ -6,8 +6,8 @@ RSpec.describe "orders API endpoint" do
   include Rack::Test::Methods
 
   before do
-    @id_1 = create_seat.id
-    @id_2 = create_seat.id
+    @id_1 = create_seat(gig_id).id
+    @id_2 = create_seat(gig_id).id
   end
 
   let(:gig_id) { create_gig }

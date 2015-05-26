@@ -14,4 +14,12 @@ module Queries
   class GetFreeSeats < AbstractQuery
     attribute :gig_id, String
   end
+
+  class ListSeats < AbstractQuery
+    attribute :gig_id, String
+  end
+
+  class ListRows < AbstractQuery
+    attribute :gig_id, String
+  end
 end

@@ -38,15 +38,21 @@ class App
       },
       Queries::GetFreeSeats => answerer { |q|
         reserved_seats = fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = 0 }, &self.method(:update_reserved_seats))[q.gig_id]
-        all_seats = DBModels::Seat.where(usable: true).count
+        all_seats = DBModels::Seat.join(:rows, id: :row_id).where(gig_id: q.gig_id).where(usable: true).count
         all_seats - reserved_seats
-      }
+      },
+      Queries::ListSeats => answerer { |q|
+        @connection[:seats].join(:rows, id: :row_id).select(Sequel.qualify(:seats, :id), :x, Sequel.qualify(:seats, :number), :usable, Sequel.qualify(:rows, :number).as(:row_number)).where(Sequel.qualify(:rows, :gig_id) => q.gig_id).all
+      },
+      Queries::ListRows => answerer { |q|
+        @connection[:rows].where(gig_id: q.gig_id).all
+      },
     }.fetch(query.class).answer(query)
   end
 
   def handle(command)
     {
-      Commands::CreateRow => handler { |c| DBModels::Row.create(y: c.y, number: c.number) },
+      Commands::CreateRow => handler { |c| DBModels::Row.create(y: c.y, number: c.number, gig_id: c.gig_id) },
       Commands::CreateSeat => handler { |c| DBModels::Seat.create(x: c.x, number: c.number, usable: c.usable, row_id: c.row_id) },
       Commands::CreateGig => handler { |c| DBModels::Gig.create(title: c.title, date: c.date) },
       Commands::SubmitOrder => handler do |c|

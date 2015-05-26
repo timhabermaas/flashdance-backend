@@ -8,6 +8,7 @@ module Commands
   class CreateRow < AbstractCommand
     attribute :y, Integer
     attribute :number, Integer
+    attribute :gig_id, String
   end
 
   class CreateSeat < AbstractCommand
