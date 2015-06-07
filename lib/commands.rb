@@ -39,4 +39,14 @@ module Commands
     attribute :name, String
     attribute :email, String
   end
+
+  class ReserveSeat < AbstractCommand
+    attribute :order_id, String
+    attribute :seat_id, String
+  end
+
+  class FreeSeat < AbstractCommand
+    attribute :order_id, String
+    attribute :seat_id, String
+  end
 end

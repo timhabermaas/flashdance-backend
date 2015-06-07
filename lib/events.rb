@@ -57,4 +57,36 @@ module Events
       {}
     end
   end
+
+  class SeatReserved < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
+
+  class SeatAddedToOrder < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
+
+  class SeatRemovedFromOrder < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
+
+  class SeatFreed < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
 end

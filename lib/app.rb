@@ -11,8 +11,9 @@ require "securerandom"
 
 class App
   class DomainError < StandardError; end
-  class SeatsReserved < DomainError
-  end
+  class SeatsReserved < DomainError; end
+  class SeatAlreadyReserved < DomainError; end
+  class SeatNotReserved < DomainError; end
 
   def initialize(database_url, logging=true)
     loggers = logging ? [Logger.new($stdout)] : []
@@ -37,7 +38,7 @@ class App
         fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
       },
       Queries::GetFreeSeats => answerer { |q|
-        reserved_seats = fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = 0 }, &self.method(:update_reserved_seats))[q.gig_id]
+        reserved_seats = fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = 0 }, &self.method(:update_reserved_seats_count))[q.gig_id]
         all_seats = DBModels::Seat.join(:rows, id: :row_id).where(gig_id: q.gig_id).where(usable: true).count
         all_seats - reserved_seats
       },
@@ -81,6 +82,32 @@ class App
         order_id = SecureRandom.uuid
         persist_event(Events::OrderStarted.new(aggregate_id: order_id))
         order_id
+      end,
+      Commands::ReserveSeat => handler do |c|
+        gig_id = @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => c.seat_id).first[:gig_id]
+        reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats))[gig_id]
+        if reservations.include?(c.seat_id)
+          raise SeatAlreadyReserved.new(c.seat_id)
+        else
+          events = [
+            Events::SeatReserved.new(aggregate_id: gig_id, seat_id: c.seat_id),
+            Events::SeatAddedToOrder.new(aggregate_id: c.order_id, seat_id: c.seat_id)
+          ]
+          persist_events(events)
+        end
+      end,
+      Commands::FreeSeat => handler do |c|
+        gig_id = @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => c.seat_id).first[:gig_id]
+        reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats_for_order))[c.order_id]
+        if reservations.include?(c.seat_id)
+          events = [
+            Events::SeatRemovedFromOrder.new(aggregate_id: c.order_id, seat_id: c.seat_id),
+            Events::SeatFreed.new(aggregate_id: gig_id, seat_id: c.seat_id)
+          ]
+          persist_events(events)
+        else
+          raise SeatNotReserved.new(c.seat_id)
+        end
       end
     }.fetch(command.class).handle(command)
   end
@@ -108,6 +135,12 @@ class App
 
     def update_reservations(reservations, event)
       case event
+      when Events::SeatReserved
+        reservations[event.aggregate_id] += [ReadModels::Reservation.new(event.seat_id)]
+        reservations
+      when Events::SeatFreed
+        reservations[event.aggregate_id].delete_if { |r| r.seat_id == event.seat_id }
+        reservations
       when Events::SeatsReserved
         reservations[event.aggregate_id] += event.seat_ids.map { |s| ReadModels::Reservation.new(s) }
         reservations
@@ -116,7 +149,27 @@ class App
       end
     end
 
-    def update_reserved_seats(seats, event)
+    def update_reserved_seats(reservations, event)
+      case event
+      when Events::SeatReserved
+        reservations[event.aggregate_id] << event.seat_id
+        reservations
+      else
+        reservations
+      end
+    end
+
+    def update_reserved_seats_for_order(reservations, event)
+      case event
+      when Events::SeatAddedToOrder
+        reservations[event.aggregate_id] << event.seat_id
+        reservations
+      else
+        reservations
+      end
+    end
+
+    def update_reserved_seats_count(seats, event)
       case event
       when Events::SeatsReserved
         seats[event.aggregate_id] += event.seat_ids.size
@@ -158,6 +211,12 @@ class App
                              type: event.class.to_s,
                              user_id: nil,
                              body: JSON.generate(event.serialize))
+    end
+
+    def persist_events(events)
+      @connection.transaction do
+        events.each { |e| persist_event(e) }
+      end
     end
 
     def deserialize_event(event_hash)

@@ -61,9 +61,30 @@ class Api < Sinatra::Application
 
   post "/orders" do
     r = JSON.parse(request.body.read)
-    @app.handle(Commands::StartOrder.new(name: r["name"], email: r["email"]))
+    order_id = @app.handle(Commands::StartOrder.new(name: r["name"], email: r["email"]))
     status 201
-    body JSON.generate({orderId: "foo"})
+    body JSON.generate({orderId: order_id})
+  end
+
+  put "/orders/:id/reservations/:seat_id" do
+    begin
+      @app.handle(Commands::ReserveSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
+      status 200
+      body JSON.generate({})
+    rescue App::SeatAlreadyReserved => e
+      status 400
+    end
+  end
+
+  delete "/orders/:id/reservations/:seat_id" do
+    begin
+      @app.handle(Commands::FreeSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
+      status 200
+      body JSON.generate({})
+    rescue App::SeatNotReserved => e
+      status 400
+      body JSON.generate(errors: [{message: "seat not reserved by order"}])
+    end
   end
 
   post "/gigs/:gig_id/orders" do

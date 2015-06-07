@@ -29,6 +29,104 @@ RSpec.describe "orders API endpoint" do
     end
   end
 
+  describe "PUT /orders/:id/reservations/:seat_id" do
+    before do
+      post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                     name: "Peter Heinzelmann"})
+      @order_id = json_response["orderId"]
+    end
+
+    context "seat is free" do
+      before do
+        put "/orders/#{@order_id}/reservations/#{@id_1}"
+      end
+
+      it "returns 200 Ok" do
+        expect(last_status).to eq 200
+      end
+
+      it "reserves the seat" do
+        get "/gigs/#{gig_id}/reservations"
+
+        expect(json_response.size).to eq 1
+        expect(json_response.first["seatId"]).to eq @id_1
+      end
+    end
+
+    context "seat is already reserved" do
+      before do
+        put "/orders/#{@order_id}/reservations/#{@id_1}"
+        put "/orders/#{@order_id}/reservations/#{@id_1}"
+      end
+
+      it "returns 400 Bad Request" do
+        expect(last_status).to eq 400
+      end
+    end
+  end
+
+  describe "DELETE /orders/:id/reservations/:seat_id" do
+    before do
+      post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                     name: "Peter Heinzelmann"})
+      @order_id = json_response["orderId"]
+    end
+
+    context "seat reserved by that order" do
+      before do
+        put "/orders/#{@order_id}/reservations/#{@id_1}"
+        delete "/orders/#{@order_id}/reservations/#{@id_1}"
+      end
+
+      it "returns 200 Ok" do
+        expect(last_status).to eq 200
+      end
+
+      it "removes the reservation" do
+        get "/gigs/#{gig_id}/reservations"
+
+        expect(json_response).to eq []
+      end
+
+      it "returns an empty json response" do
+        expect(json_response).to eq({})
+      end
+    end
+
+    context "seat reserved by another order" do
+      before do
+        post "/orders", JSON.generate({email: "hans@mustermann.de",
+                                       name: "Hans Mustermann"})
+        @other_order_id = json_response["orderId"]
+
+        put "/orders/#{@other_order_id}/reservations/#{@id_1}"
+        delete "/orders/#{@order_id}/reservations/#{@id_1}"
+      end
+
+      it "returns 400 Bad Request" do
+        expect(last_status).to eq 400
+      end
+
+      it "returns an error response" do
+        expect(json_response["errors"].first["message"]).to eq "seat not reserved by order"
+      end
+    end
+
+    context "seat free" do
+      before do
+        delete "/orders/#{@order_id}/reservations/#{@id_1}"
+      end
+
+      it "returns 400 Bad Request" do
+        expect(last_status).to eq 400
+      end
+
+      it "returns an error response" do
+        expect(json_response["errors"].first["message"]).to eq "seat not reserved by order"
+      end
+    end
+  end
+
   describe "POST /gigs/:id/orders" do
     context "valid order" do
       before do
