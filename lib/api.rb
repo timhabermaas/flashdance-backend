@@ -3,6 +3,8 @@ require "json"
 require "sequel"
 require "logger"
 
+require "app"
+
 
 
 class Api < Sinatra::Application
@@ -34,6 +36,10 @@ class Api < Sinatra::Application
     status 404
     headers "Content-Type" => "application/json; charset=utf-8"
     body '{"error": "not found"}'
+  end
+
+  error App::RecordNotFound do
+    status 404
   end
 
   get "/gigs/:gig_id/seats" do

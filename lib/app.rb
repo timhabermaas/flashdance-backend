@@ -11,6 +11,7 @@ require "securerandom"
 
 class App
   class DomainError < StandardError; end
+  class RecordNotFound < StandardError; end
   class SeatsReserved < DomainError; end
   class SeatAlreadyReserved < DomainError; end
   class SeatNotReserved < DomainError; end
@@ -86,7 +87,10 @@ class App
       Commands::ReserveSeat => handler do |c|
         gig_id = @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => c.seat_id).first[:gig_id]
         reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats))[gig_id]
-        if reservations.include?(c.seat_id)
+
+        if fetch_events_for(aggregate_id: c.order_id).empty?
+          raise RecordNotFound.new
+        elsif reservations.include?(c.seat_id)
           raise SeatAlreadyReserved.new(c.seat_id)
         else
           events = [
@@ -99,7 +103,9 @@ class App
       Commands::FreeSeat => handler do |c|
         gig_id = @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => c.seat_id).first[:gig_id]
         reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats_for_order))[c.order_id]
-        if reservations.include?(c.seat_id)
+        if fetch_events_for(aggregate_id: c.order_id).empty?
+          raise RecordNotFound.new
+        elsif reservations.include?(c.seat_id)
           events = [
             Events::SeatRemovedFromOrder.new(aggregate_id: c.order_id, seat_id: c.seat_id),
             Events::SeatFreed.new(aggregate_id: gig_id, seat_id: c.seat_id)

@@ -36,6 +36,16 @@ RSpec.describe "orders API endpoint" do
       @order_id = json_response["orderId"]
     end
 
+    context "order doesn't exist" do
+      before do
+        put "/orders/#{SecureRandom.uuid}/reservations/#{@id_1}"
+      end
+
+      it "returns 404 Not Found" do
+        expect(last_status).to eq 404
+      end
+    end
+
     context "seat is free" do
       before do
         put "/orders/#{@order_id}/reservations/#{@id_1}"
@@ -76,6 +86,16 @@ RSpec.describe "orders API endpoint" do
       post "/orders", JSON.generate({email: "peter@heinzelmann.de",
                                      name: "Peter Heinzelmann"})
       @order_id = json_response["orderId"]
+    end
+
+    context "order doesn't exist" do
+      before do
+        delete "/orders/#{SecureRandom.uuid}/reservations/#{@id_1}"
+      end
+
+      it "returns 404 Not Found" do
+        expect(last_status).to eq 404
+      end
     end
 
     context "seat reserved by that order" do
