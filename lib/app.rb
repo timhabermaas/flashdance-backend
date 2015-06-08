@@ -171,6 +171,9 @@ class App
 
     def update_reserved_seats_count(seats, event)
       case event
+      when Events::SeatReserved
+        seats[event.aggregate_id] += 1
+        seats
       when Events::SeatsReserved
         seats[event.aggregate_id] += event.seat_ids.size
         seats

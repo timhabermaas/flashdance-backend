@@ -51,6 +51,12 @@ RSpec.describe "orders API endpoint" do
         expect(json_response.size).to eq 1
         expect(json_response.first["seatId"]).to eq @id_1
       end
+
+      it "changes the free seat count of a gig" do
+        get "/gigs"
+
+        expect(json_response.first["freeSeats"]).to eq 1
+      end
     end
 
     context "seat is already reserved" do
