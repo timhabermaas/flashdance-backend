@@ -117,6 +117,21 @@ RSpec.describe "orders API endpoint" do
       it "returns an empty json response" do
         expect(json_response).to eq({})
       end
+
+      context "let's user reserve seat again" do
+        before do
+          put "/orders/#{@order_id}/reservations/#{@id_1}"
+        end
+
+        it "returns 200 Ok" do
+          expect(last_status).to eq 200
+        end
+
+        it "readds the reservation" do
+          get "/gigs/#{gig_id}/reservations"
+          expect(json_response.size).to eq 1
+        end
+      end
     end
 
     context "seat reserved by another order" do

@@ -160,6 +160,9 @@ class App
       when Events::SeatReserved
         reservations[event.aggregate_id] << event.seat_id
         reservations
+      when Events::SeatFreed
+        reservations[event.aggregate_id].delete_if { |e| e == event.seat_id }
+        reservations
       else
         reservations
       end
