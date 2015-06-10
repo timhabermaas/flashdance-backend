@@ -57,18 +57,6 @@ class App
       Commands::CreateRow => handler { |c| DBModels::Row.create(y: c.y, number: c.number, gig_id: c.gig_id) },
       Commands::CreateSeat => handler { |c| DBModels::Seat.create(x: c.x, number: c.number, usable: c.usable, row_id: c.row_id) },
       Commands::CreateGig => handler { |c| DBModels::Gig.create(title: c.title, date: c.date) },
-      Commands::SubmitOrder => handler do |c|
-        reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[c.gig_id]
-        if reservations.map(&:seat_id) & c.seat_ids != []
-          raise SeatsReserved.new(reservations.map(&:seat_id) & c.seat_ids)
-        end
-        events = []
-        order_id = SecureRandom.uuid
-        events << Events::OrderPlaced.new(aggregate_id: order_id, gig_id: c.gig_id, seat_ids: c.seat_ids, name: c.name, email: c.email, reduced_count: c.reduced_count)
-        events << Events::SeatsReserved.new(aggregate_id: c.gig_id, order_id: order_id, seat_ids: c.seat_ids)
-        persist_events(events)
-        return order_id
-      end,
       Commands::PayOrder => handler do |c|
         events = fetch_events_for(aggregate_id: c.order_id)
         if events.empty?

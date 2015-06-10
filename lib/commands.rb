@@ -23,14 +23,6 @@ module Commands
     attribute :date, DateTime
   end
 
-  class SubmitOrder < AbstractCommand
-    attribute :gig_id, String
-    attribute :name, String
-    attribute :email, String
-    attribute :seat_ids, Array[String]
-    attribute :reduced_count, Integer
-  end
-
   class PayOrder < AbstractCommand
     attribute :order_id, String
   end
