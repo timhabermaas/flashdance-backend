@@ -3,6 +3,7 @@ require "query_handlers"
 require "commands"
 require "queries"
 require "events"
+require "aggregates"
 require "read_models"
 
 require "sequel"
@@ -31,9 +32,8 @@ class App
 
   def answer(query)
     {
-      Queries::ListOrdersForGig => answerer { |q|
-        orders = fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_orders))
-        orders[q.gig_id]
+      Queries::ListFinishedOrders => answerer { |q|
+        fetch_events.reduce({}, &self.method(:update_orders)).values
       },
       Queries::ListReservationsForGig => answerer { |q|
         fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
@@ -66,9 +66,7 @@ class App
         order_id = SecureRandom.uuid
         events << Events::OrderPlaced.new(aggregate_id: order_id, gig_id: c.gig_id, seat_ids: c.seat_ids, name: c.name, email: c.email, reduced_count: c.reduced_count)
         events << Events::SeatsReserved.new(aggregate_id: c.gig_id, order_id: order_id, seat_ids: c.seat_ids)
-        events.each do |e|
-          persist_event(e)
-        end
+        persist_events(events)
         return order_id
       end,
       Commands::PayOrder => handler do |c|
@@ -81,7 +79,7 @@ class App
       end,
       Commands::StartOrder => handler do |c|
         order_id = SecureRandom.uuid
-        persist_event(Events::OrderStarted.new(aggregate_id: order_id))
+        persist_event(Events::OrderStarted.new(aggregate_id: order_id, name: c.name, email: c.email))
         order_id
       end,
       Commands::ReserveSeat => handler do |c|
@@ -114,6 +112,12 @@ class App
         else
           raise SeatNotReserved.new(c.seat_id)
         end
+      end,
+      Commands::FinishOrder => handler do |c|
+        order_events = fetch_events_for(aggregate_id: c.order_id)
+        order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
+        events = order.finish!(c.reduced_count)
+        persist_events(events)
       end
     }.fetch(command.class).handle(command)
   end
@@ -193,18 +197,25 @@ class App
 
     def update_orders(orders, event)
       case event
-      when Events::OrderPlaced
-        orders[event.gig_id] << ReadModels::Order.new(event.aggregate_id, event.name, event.email, event.seat_ids, false, event.reduced_count)
+      when Events::OrderStarted
+        orders[event.aggregate_id] = ReadModels::Order.new(event.aggregate_id, event.name, event.email, [], false, 0, event.created_at)
+        orders
+      when Events::SeatAddedToOrder
+        order = orders[event.aggregate_id]
+        order.add_seat(event.seat_id)
+        orders
+      when Events::SeatRemovedFromOrder
+        order = orders[event.aggregate_id]
+        order.remove_seat(event.seat_id)
+        orders
+      when Events::ReducedTicketsSet
+        order = orders[event.aggregate_id]
+        order.reduced_count = event.reduced_count
         orders
       when Events::OrderPaid
-        all_orders = orders.map { |key, value| [key, value] }
-        orders.each do |gig_id, orders|
-          orders.each do |order|
-            if order.id == event.aggregate_id
-              order.pay!
-            end
-          end
-        end
+        order = orders[event.aggregate_id]
+        order.pay!
+        orders
       else
         orders
       end
@@ -234,6 +245,11 @@ class App
     def deserialize_event(event_hash)
       klass = Object.const_get(event_hash[:type])
       body = JSON.parse(event_hash[:body])
-      klass.new(body.merge(aggregate_id: event_hash[:aggregate_id]))
+      klass.new(body.merge(aggregate_id: event_hash[:aggregate_id], created_at: event_hash[:created_at]))
+    end
+
+    def fetch_domain(klass:, aggregate_id:)
+      events = fetch_events_for(aggregate_id: aggregate_id)
+      klass.new(events)
     end
 end

@@ -49,4 +49,9 @@ module Commands
     attribute :order_id, String
     attribute :seat_id, String
   end
+
+  class FinishOrder < AbstractCommand
+    attribute :order_id, String
+    attribute :reduced_count, Integer
+  end
 end

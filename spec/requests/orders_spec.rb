@@ -168,120 +168,46 @@ RSpec.describe "orders API endpoint" do
     end
   end
 
-  describe "POST /gigs/:id/orders" do
-    context "valid order" do
+  describe "PUT /orders/:id/pick_up" do
+    before do
+      post "/orders", JSON.generate({email: "hans@mustermann.de",
+                                     name: "Hans Mustermann"})
+
+      @order_id = json_response["orderId"]
+    end
+
+    context "no seats reserved" do
       before do
-        post "/gigs/#{gig_id}/orders", JSON.generate({email: "peter@heinzelmann.de",
-                                                      name: "Peter Heinzelmann",
-                                                      seatIds: [@id_1, @id_2],
-                                                      reducedCount: 1})
+        put "/orders/#{@order_id}/reservations/#{@id_1}"
+        delete "/orders/#{@order_id}/reservations/#{@id_1}"
+
+        put "/orders/#{@order_id}/finish", JSON.generate({reducedCount: 0, type: "pickUpBeforehand"})
       end
 
-      it "returns 201 Created" do
-        expect(last_status).to eq 201
-      end
-
-      it "adds the order" do
-        get "/gigs/#{gig_id}/orders"
-
-        expect(json_response.size).to eq 1
-        expect(json_response.first["name"]).to eq "Peter Heinzelmann"
-        expect(json_response.first["email"]).to eq "peter@heinzelmann.de"
-        expect(json_response.first["seatIds"]).to eq [@id_1, @id_2]
-        expect(json_response.first["reducedCount"]).to eq 1
-      end
-
-      it "adds the reservations" do
-        get "/gigs/#{gig_id}/reservations"
-
-        expect(json_response.size).to eq 2
-        expect(json_response.map { |r| r["seatId"] }).to match_array [@id_1, @id_2]
-      end
-
-      it "returns a representation of the order" do
-        expect(json_response["name"]).to eq "Peter Heinzelmann"
-        expect(json_response["email"]).to eq "peter@heinzelmann.de"
-        expect(json_response["seatIds"]).to match_array [@id_1, @id_2]
-        expect(json_response["reducedCount"]).to eq 1
-        expect(json_response["id"]).to be_a(String)
+      it "returns 400 Bad Request" do
+        expect(last_status).to eq 400
       end
     end
 
-    context "invalid order" do
-      shared_examples_for "missing attribute" do |attribute, error_message|
-        it "returns 422 Unprocessable Entity" do
-          expect(last_status).to eq 422
-        end
-
-        it "has a errors json response present" do
-          expect(json_response.key?("errors")).to eq true
-          expect(json_response["errors"].first["message"]).to eq error_message
-          expect(json_response["errors"].first["attribute"]).to eq attribute
-          expect(json_response["errors"].first["code"]).to eq "missing_field"
-        end
-      end
-
-      let(:email) { "foo@bar.com" }
-      let(:name) { "Max Mustermann" }
-      let(:seat_ids) { [@id_2] }
-      let(:reduced_count) { 1 }
-
+    context "at least one seat reserved" do
       before do
-        # FIXME having this here is kinda wasteful. It's actually just needed
-        #       for the "seat already reserved" case
-        post "/gigs/#{gig_id}/orders", JSON.generate({email: email,
-                                                      name: name,
-                                                      seatIds: [@id_1],
-                                                      reducedCount: 0})
-        post "/gigs/#{gig_id}/orders", JSON.generate({email: email,
-                                                      name: name,
-                                                      seatIds: seat_ids,
-                                                      reducedCount: reduced_count})
+        put "/orders/#{@order_id}/reservations/#{@id_1}"
+
+        put "/orders/#{@order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
       end
 
-      context "missing email" do
-        let(:email) { "" }
-
-        it_behaves_like "missing attribute", "email", "missing attribute `email`"
+      it "returns 200 Ok" do
+        expect(last_status).to eq 200
       end
 
-      context "missing name" do
-        let(:name) { nil }
+      it "adds the order to the /orders endpoint" do
+        get "/orders"
 
-        it_behaves_like "missing attribute", "name", "missing attribute `name`"
-      end
-
-      context "missing reducedCount" do
-        let(:reduced_count) { nil }
-
-        it_behaves_like "missing attribute", "reducedCount", "missing attribute `reducedCount`"
-      end
-
-      context "empty seatIds" do
-        let(:seat_ids) { nil }
-
-        it_behaves_like "missing attribute", "seatIds", "missing attribute `seatIds`"
-      end
-
-      context "empty seats" do
-        let(:seat_ids) { [] }
-
-        it_behaves_like "missing attribute", "seatIds", "missing attribute `seatIds`"
-      end
-
-      context "seats already reserved" do
-        let(:seat_ids) { [@id_1] }
-
-        # TODO correct status?
-        it "returns 422 Unprocessable Entity" do
-          expect(last_status).to eq 422
-        end
-
-        it "returns an error response containing the exact error" do
-          expect(json_response["errors"].first["message"]).to eq "Some seats are already reserved"
-          expect(json_response["errors"].first["attribute"]).to eq "seatIds"
-          expect(json_response["errors"].first["code"]).to eq "already_exists"
-        end
+        expect(json_response.size).to eq 1
+        expect(json_response.first["name"]).to eq "Hans Mustermann"
+        expect(json_response.first["email"]).to eq "hans@mustermann.de"
+        expect(json_response.first["seatIds"]).to eq [@id_1]
+        expect(json_response.first["reducedCount"]).to eq 1
       end
     end
   end
@@ -303,11 +229,13 @@ RSpec.describe "orders API endpoint" do
 
     context "order isn't paid yet" do
       before do
-        post "/gigs/#{gig_id}/orders", JSON.generate({email: "peter@heinzelmann.de",
-                                                      name: "Peter Heinzelmann",
-                                                      seatIds: [@id_1, @id_2],
-                                                      reducedCount: 1})
-        order_id = json_response["id"]
+        post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                       name: "Peter Heinzelmann"})
+        order_id = json_response["orderId"]
+        put "/orders/#{order_id}/reservations/#{@id_1}"
+        put "/orders/#{order_id}/reservations/#{@id_2}"
+        put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1})
+
         put "/orders/#{order_id}/pay"
       end
 
@@ -316,7 +244,7 @@ RSpec.describe "orders API endpoint" do
       end
 
       it "sets the order to paid" do
-        get "/gigs/#{gig_id}/orders"
+        get "/orders"
 
         expect(json_response.first["paid"]).to eq true
       end

@@ -72,6 +72,16 @@ class Api < Sinatra::Application
     body JSON.generate({orderId: order_id})
   end
 
+  put "/orders/:id/finish" do
+    r = JSON.parse(request.body.read)
+    begin
+      @app.handle(Commands::FinishOrder.new(order_id: params[:id], reduced_count: r["reducedCount"]))
+      status 200
+    rescue Aggregates::Order::CantFinishOrder
+      status 400
+    end
+  end
+
   put "/orders/:id/reservations/:seat_id" do
     begin
       @app.handle(Commands::ReserveSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
@@ -93,45 +103,6 @@ class Api < Sinatra::Application
     end
   end
 
-  post "/gigs/:gig_id/orders" do
-    r = JSON.parse(request.body.read)
-
-    if r["email"].nil? || r["email"].empty?
-      status 422
-      body JSON.generate({errors: [{attribute: "email", code: "missing_field", message: "missing attribute `email`"}]})
-      return
-    end
-
-    if r["name"].nil? || r["name"].empty?
-      status 422
-      body JSON.generate({errors: [{attribute: "name", code: "missing_field", message: "missing attribute `name`"}]})
-      return
-    end
-
-    if r["reducedCount"].nil?
-      status 422
-      body JSON.generate({errors: [{attribute: "reducedCount", code: "missing_field", message: "missing attribute `reducedCount`"}]})
-      return
-    end
-
-    if r["seatIds"].nil? || r["seatIds"].empty?
-      status 422
-      body JSON.generate({errors: [{attribute: "seatIds", code: "missing_field", message: "missing attribute `seatIds`"}]})
-      return
-    end
-
-    r = r.merge(gig_id: params[:gig_id], seat_ids: r["seatIds"], reduced_count: r["reducedCount"])
-    begin
-      order_id = @app.handle(Commands::SubmitOrder.new(r))
-
-      status 201
-      body JSON.generate({name: r["name"], id: order_id, email: r["email"], seatIds: r["seatIds"], reducedCount: r["reducedCount"]})
-    rescue App::SeatsReserved => e
-      status 422
-      body JSON.generate({errors: [{attribute: "seatIds", code: "already_exists", message: "Some seats are already reserved"}]})
-    end
-  end
-
   put "/orders/:order_id/pay" do
     begin
       @app.handle(Commands::PayOrder.new(order_id: params["order_id"]))
@@ -143,8 +114,8 @@ class Api < Sinatra::Application
     end
   end
 
-  get "/gigs/:gig_id/orders" do
-    orders = @app.answer(Queries::ListOrdersForGig.new(gig_id: params[:gig_id]))
+  get "/orders" do
+    orders = @app.answer(Queries::ListFinishedOrders.new)
 
     body JSON.generate(orders.map(&:serialize))
   end
