@@ -19,12 +19,14 @@ class SendgridMailer
   end
 
   def send_confirmation_mail order
+    return if order.email.nil? || order.email.empty?
+
     body = <<-EOS
 Vielen Dank für Ihre Kartenreservierung zu „FLASHDANCE – The Musical“ der HGR Musical AG.
 
 Bitte überweisen Sie den Betrag von
 
-<%= "%.2f" % order.total_cost.fdiv(100) %>
+<%= "%.2f" % order.total_cost.fdiv(100) %> €
 
 innerhalb der nächsten 5 Werktage unter Angabe der Nummer
 
