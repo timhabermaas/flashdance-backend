@@ -83,23 +83,17 @@ class App
         order_id
       end,
       Commands::ReserveSeat => handler do |c|
-        gig_id = @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => c.seat_id).first[:gig_id]
-        reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats))[gig_id]
+        gig_id = get_gig_id_from_seat(c.seat_id)
+        gig = Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id))
 
-        if fetch_events_for(aggregate_id: c.order_id).empty?
-          raise RecordNotFound.new
-        elsif reservations.include?(c.seat_id)
-          raise SeatAlreadyReserved.new(c.seat_id)
-        else
-          events = [
-            Events::SeatReserved.new(aggregate_id: gig_id, seat_id: c.seat_id),
-            Events::SeatAddedToOrder.new(aggregate_id: c.order_id, seat_id: c.seat_id)
-          ]
-          persist_events(events)
-        end
+        order_events = fetch_events_for(aggregate_id: c.order_id)
+        raise RecordNotFound.new if order_events.empty?
+        order = Aggregates::Order.new(order_events)
+
+        persist_events order.reserve_seat!(gig, c.seat_id)
       end,
       Commands::FreeSeat => handler do |c|
-        gig_id = @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => c.seat_id).first[:gig_id]
+        gig_id = get_gig_id_from_seat(c.seat_id)
         reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats_for_order))[c.order_id]
         if fetch_events_for(aggregate_id: c.order_id).empty?
           raise RecordNotFound.new
@@ -251,5 +245,9 @@ class App
     def fetch_domain(klass:, aggregate_id:)
       events = fetch_events_for(aggregate_id: aggregate_id)
       klass.new(events)
+    end
+
+    def get_gig_id_from_seat(seat_id)
+      @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => seat_id).first[:gig_id]
     end
 end
