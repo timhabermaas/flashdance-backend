@@ -9,5 +9,6 @@ database_url = ENV.fetch("DATABASE_URL") { "postgres://localhost:5432/flashdance
 
 app = App.new(database_url)
 app.load_models!
+app.load_events!
 
 run Api.new(app)

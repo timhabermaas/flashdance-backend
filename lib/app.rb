@@ -5,15 +5,57 @@ require "queries"
 require "events"
 require "aggregates"
 require "read_models"
+require "sendgrid_mailer"
 
 require "sequel"
 require "securerandom"
 
+class ReadRepository
+  attr_reader :orders
+  attr_reader :full_seats_count
+
+  def initialize
+    reset!
+  end
+
+  def reset!
+    @orders = {}
+    @full_seats_count = Hash.new(0)
+  end
+
+  def update!(event)
+    case event
+    when Events::OrderStarted
+      @orders[event.aggregate_id] = ReadModels::Order.new(event.aggregate_id, event.name, event.email, [], false, 0, event.created_at)
+    when Events::OrderNumberSet
+      @orders[event.aggregate_id].number = event.number
+    when Events::SeatAddedToOrder
+      @orders[event.aggregate_id].add_seat(event.seat_id)
+    when Events::SeatRemovedFromOrder
+      @orders[event.aggregate_id].remove_seat(event.seat_id)
+    when Events::ReducedTicketsSet
+      @orders[event.aggregate_id].reduced_count = event.reduced_count
+    when Events::OrderFinished
+      @orders[event.aggregate_id].finish!
+    when Events::OrderPaid
+      @orders[event.aggregate_id].pay!
+    when Events::SeatReserved
+      @full_seats_count[event.aggregate_id] += 1
+    end
+  end
+end
+
+class PrintMailer
+  def send_confirmation_mail order
+    puts "SENDING E-MAIL WITH INFOS"
+    p order
+    puts
+  end
+end
 
 class App
   class DomainError < StandardError; end
   class RecordNotFound < StandardError; end
-  class SeatsReserved < DomainError; end
   class SeatAlreadyReserved < DomainError; end
   class SeatNotReserved < DomainError; end
 
@@ -23,6 +65,13 @@ class App
     Sequel.application_timezone = "Berlin"
     Sequel.database_timezone = "UTC"
     Sequel::Model.plugin :timestamps
+
+    if ENV["SENDGRID_PASSWORD"] && ENV["SENDGRID_USERNAME"]
+      @mailer = SendgridMailer.new(ENV["SENDGRID_USERNAME"], ENV["SENDGRID_PASSWORD"])
+    else
+      @mailer = PrintMailer.new
+    end
+    @read_repo = ReadRepository.new
   end
 
   # FIXME Remove this method by not using Sequel models.
@@ -30,16 +79,20 @@ class App
     require "models"
   end
 
+  def load_events!
+    @read_repo.update!(fetch_events)
+  end
+
   def answer(query)
     {
       Queries::ListFinishedOrders => answerer { |q|
-        fetch_events.reduce({}, &self.method(:update_orders)).values
+        @read_repo.orders.values.select(&:finished?)
       },
       Queries::ListReservationsForGig => answerer { |q|
         fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
       },
       Queries::GetFreeSeats => answerer { |q|
-        reserved_seats = fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = 0 }, &self.method(:update_reserved_seats_count))[q.gig_id]
+        reserved_seats = @read_repo.full_seats_count[q.gig_id]
         all_seats = DBModels::Seat.join(:rows, id: :row_id).where(gig_id: q.gig_id).where(usable: true).count
         all_seats - reserved_seats
       },
@@ -62,12 +115,12 @@ class App
         if events.empty?
           raise ArgumentError
         else
-          persist_event(Events::OrderPaid.new(aggregate_id: c.order_id))
+          persist_events([Events::OrderPaid.new(aggregate_id: c.order_id)])
         end
       end,
       Commands::StartOrder => handler do |c|
         order_id = SecureRandom.uuid
-        persist_event(Events::OrderStarted.new(aggregate_id: order_id, name: c.name, email: c.email))
+        persist_events([Events::OrderStarted.new(aggregate_id: order_id, name: c.name, email: c.email), Events::OrderNumberSet.new(aggregate_id: order_id, number: @connection[:events].count + 1000)])
         order_id
       end,
       Commands::ReserveSeat => handler do |c|
@@ -97,9 +150,21 @@ class App
       end,
       Commands::FinishOrder => handler do |c|
         order_events = fetch_events_for(aggregate_id: c.order_id)
+        raise RecordNotFound.new if order_events.empty?
         order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
-        events = order.finish!(c.reduced_count)
+        events = order.finish!(c.reduced_count, c.type)
         persist_events(events)
+        order = @read_repo.orders[c.order_id]
+        @mailer.send_confirmation_mail(order)
+      end,
+      Commands::FinishOrderWithAddress => handler do |c|
+        order_events = fetch_events_for(aggregate_id: c.order_id)
+        raise RecordNotFound.new if order_events.empty?
+        order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
+        events = order.finish_and_deliver!(c.reduced_count, c.street, c.postal_code, c.city)
+        persist_events(events)
+        order = @read_repo.orders[c.order_id]
+        @mailer.send_confirmation_mail(order)
       end
     }.fetch(command.class).handle(command)
   end
@@ -109,6 +174,7 @@ class App
     @connection[:rows].delete
     @connection[:gigs].delete
     @connection[:events].delete
+    @read_repo.reset!
   end
 
   def migrate!
@@ -132,9 +198,6 @@ class App
         reservations
       when Events::SeatFreed
         reservations[event.aggregate_id].delete_if { |r| r.seat_id == event.seat_id }
-        reservations
-      when Events::SeatsReserved
-        reservations[event.aggregate_id] += event.seat_ids.map { |s| ReadModels::Reservation.new(s) }
         reservations
       else
         reservations
@@ -164,45 +227,6 @@ class App
       end
     end
 
-    def update_reserved_seats_count(seats, event)
-      case event
-      when Events::SeatReserved
-        seats[event.aggregate_id] += 1
-        seats
-      when Events::SeatsReserved
-        seats[event.aggregate_id] += event.seat_ids.size
-        seats
-      else
-        seats
-      end
-    end
-
-    def update_orders(orders, event)
-      case event
-      when Events::OrderStarted
-        orders[event.aggregate_id] = ReadModels::Order.new(event.aggregate_id, event.name, event.email, [], false, 0, event.created_at)
-        orders
-      when Events::SeatAddedToOrder
-        order = orders[event.aggregate_id]
-        order.add_seat(event.seat_id)
-        orders
-      when Events::SeatRemovedFromOrder
-        order = orders[event.aggregate_id]
-        order.remove_seat(event.seat_id)
-        orders
-      when Events::ReducedTicketsSet
-        order = orders[event.aggregate_id]
-        order.reduced_count = event.reduced_count
-        orders
-      when Events::OrderPaid
-        order = orders[event.aggregate_id]
-        order.pay!
-        orders
-      else
-        orders
-      end
-    end
-
     def fetch_events
       DBModels::Event.order(:global_version).map(&method(:deserialize_event))
     end
@@ -222,6 +246,7 @@ class App
       @connection.transaction do
         events.each { |e| persist_event(e) }
       end
+      events.each { |e| @read_repo.update!(e) }
     end
 
     def deserialize_event(event_hash)

@@ -210,6 +210,16 @@ RSpec.describe "orders API endpoint" do
         expect(json_response.first["reducedCount"]).to eq 1
       end
     end
+
+    context "order doesn't exist" do
+      before do
+        put "/orders/#{SecureRandom.uuid}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
+      end
+
+      it "returns 404 Not Found" do
+        expect(last_status).to eq 404
+      end
+    end
   end
 
   describe "PUT /orders/:id/pay" do
@@ -234,7 +244,7 @@ RSpec.describe "orders API endpoint" do
         order_id = json_response["orderId"]
         put "/orders/#{order_id}/reservations/#{@id_1}"
         put "/orders/#{order_id}/reservations/#{@id_2}"
-        put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1})
+        put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
 
         put "/orders/#{order_id}/pay"
       end

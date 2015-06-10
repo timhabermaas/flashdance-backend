@@ -2,6 +2,7 @@ module ReadModels
   class Order
     attr_reader :id, :name, :email, :seat_ids, :paid, :created_at
     attr_accessor :reduced_count
+    attr_accessor :number
 
     def initialize(id, name, email, seat_ids, paid, reduced_count, created_at)
       @id = id
@@ -11,10 +12,23 @@ module ReadModels
       @paid = paid
       @reduced_count = reduced_count
       @created_at = created_at
+      @finished = false
+    end
+
+    def finish!
+      @finished = true
+    end
+
+    def finished?
+      @finished
     end
 
     def add_seat(seat_id)
       @seat_ids << seat_id
+    end
+
+    def total_cost
+      (@seat_ids.size - @reduced_count) * 1600 + @reduced_count * 1200 + delivery_cost
     end
 
     def remove_seat(seat_id)
@@ -35,6 +49,11 @@ module ReadModels
     def pay!
       @paid = true
     end
+
+    private
+      def delivery_cost
+        @delivery ? 300 : 0
+      end
   end
 
   class Reservation

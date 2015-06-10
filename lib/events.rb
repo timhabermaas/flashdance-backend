@@ -38,19 +38,29 @@ module Events
     end
   end
 
-  class SeatsReserved < AbstractEvent
-    attribute :seat_ids, Array[String]
-    attribute :order_id, String
-
-    def serialize
-      {seat_ids: seat_ids, order_id: order_id}
-    end
-  end
-
   class OrderPaid < AbstractEvent
     def serialize
       {}
     end
+  end
+
+  class AddressAdded < AbstractEvent
+    attribute :street, String
+    attribute :postal_code, String
+    attribute :city, String
+
+    def serialize
+      {city: city, postal_code: postal_code, street: street}
+    end
+  end
+
+  class PickUpAtSchoolPicked < AbstractEvent
+  end
+
+  class PickUpBeforeGigPicked < AbstractEvent
+  end
+
+  class DeliveryPicked < AbstractEvent
   end
 
   class OrderStarted < AbstractEvent
@@ -59,6 +69,14 @@ module Events
 
     def serialize
       {name: name, email: email}
+    end
+  end
+
+  class OrderNumberSet < AbstractEvent
+    attribute :number, Integer
+
+    def serialize
+      {number: number}
     end
   end
 

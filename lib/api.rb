@@ -72,11 +72,18 @@ class Api < Sinatra::Application
     body JSON.generate({orderId: order_id})
   end
 
+  # type can be "pickUpBeforehand" or "pickUpBoxOffice"
+  # if address is set, it's automatically delivered
   put "/orders/:id/finish" do
     r = JSON.parse(request.body.read)
     begin
-      @app.handle(Commands::FinishOrder.new(order_id: params[:id], reduced_count: r["reducedCount"]))
+      if address = r["address"]
+        @app.handle(Commands::FinishOrderWithAddress.new(street: address["street"], postal_code: address["postalCode"], city: address["city"], order_id: params[:id], reduced_count: r["reducedCount"]))
+      else
+        @app.handle(Commands::FinishOrder.new(type: r["type"], order_id: params[:id], reduced_count: r["reducedCount"]))
+      end
       status 200
+      body JSON.generate({})
     rescue Aggregates::Order::CantFinishOrder
       status 400
     end

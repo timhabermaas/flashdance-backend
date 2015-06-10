@@ -12,6 +12,8 @@ gem 'sequel'
 
 gem 'rake'
 
+gem 'pony'
+
 gem 'newrelic_rpm'
 
 group :test do

@@ -45,5 +45,14 @@ module Commands
   class FinishOrder < AbstractCommand
     attribute :order_id, String
     attribute :reduced_count, Integer
+    attribute :type, String
+  end
+
+  class FinishOrderWithAddress < AbstractCommand
+    attribute :order_id, String
+    attribute :reduced_count, Integer
+    attribute :street, String
+    attribute :postal_code, String
+    attribute :city, String
   end
 end

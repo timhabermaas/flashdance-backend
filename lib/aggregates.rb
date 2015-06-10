@@ -54,12 +54,24 @@ module Aggregates
     end
     private :apply
 
-    def finish!(reduced_count)
+    def finish!(reduced_count, type)
       raise CantFinishOrder.new if @reserved_seats.empty?
       raise CantFinishOrder.new if @reserved_seats.size - reduced_count < 0
 
       [
         Events::ReducedTicketsSet.new(aggregate_id: @order_id, reduced_count: reduced_count),
+        (if type == "pickUpBeforehand" then Events::PickUpBeforeGigPicked.new(aggregate_id: @order_id) else Events::PickUpAtSchoolPicked.new(aggregate_id: @order_id) end),
+        Events::OrderFinished.new(aggregate_id: @order_id)
+      ]
+    end
+
+    def finish_and_deliver!(reduced_count, street, postal_code, city)
+      raise CantFinishOrder.new if @reserved_seats.empty?
+      raise CantFinishOrder.new if @reserved_seats.size - reduced_count < 0
+
+      [
+        Events::ReducedTicketsSet.new(aggregate_id: @order_id, reduced_count: reduced_count),
+        Events::AddressAdded.new(aggregate_id: @order_id, street: street, postal_code: postal_code, city: city),
         Events::OrderFinished.new(aggregate_id: @order_id)
       ]
     end

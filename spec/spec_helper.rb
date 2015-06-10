@@ -6,7 +6,7 @@ require "commands"
 
 module IntegrationHelpers
   def internal_app
-    App.new("postgres://localhost:5432/flashdance_test", false)
+    @app ||= App.new("postgres://localhost:5432/flashdance_test", false)
   end
 
   def app
@@ -39,6 +39,7 @@ RSpec.configure do |config|
 
   config.before do
     internal_app.load_models!
+    internal_app.load_events!
   end
 
   config.after do
