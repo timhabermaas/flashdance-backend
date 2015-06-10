@@ -6,12 +6,16 @@ RSpec.describe "/gigs/:id/seats" do
 
   context "gig exists" do
     before do
-      row = internal_app.handle(Commands::CreateRow.new(y: 1, number: 2))
+      gig_id = create_gig
+      second_gig = create_gig
+
+      row = internal_app.handle(Commands::CreateRow.new(y: 1, number: 2, gig_id: gig_id))
 
       internal_app.handle(Commands::CreateSeat.new(x: 1, number: 3, row_id: row.id, usable: false))
       internal_app.handle(Commands::CreateSeat.new(x: 2, number: 4, row_id: row.id))
 
-      gig_id = create_gig
+      row = internal_app.handle(Commands::CreateRow.new(y: 1, number: 2, gig_id: second_gig))
+      internal_app.handle(Commands::CreateSeat.new(x: 1, number: 2, row_id: row.id))
 
       get "/gigs/#{gig_id}/seats"
     end

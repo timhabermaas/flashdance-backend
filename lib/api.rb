@@ -3,6 +3,8 @@ require "json"
 require "sequel"
 require "logger"
 
+require "app"
+
 
 
 class Api < Sinatra::Application
@@ -36,10 +38,21 @@ class Api < Sinatra::Application
     body '{"error": "not found"}'
   end
 
+  error App::RecordNotFound do
+    status 404
+  end
+
   get "/gigs/:gig_id/seats" do
     if DBModels::Gig[params[:gig_id]]
       status 200
-      body JSON.generate({seats: DBModels::Seat.eager(:row).all.map(&:serialize), rows: DBModels::Row.all.map(&:serialize)})
+      seats = @app.answer(Queries::ListSeats.new(gig_id: params[:gig_id]))
+      rows = @app.answer(Queries::ListRows.new(gig_id: params[:gig_id])).map do |r|
+        {y: r[:y], number: r[:number]}
+      end
+      seats = seats.map do |s|
+        {x: s[:x], number: s[:number], row: s[:row_number], id: s[:id], usable: s[:usable]}
+      end
+      body JSON.generate({seats: seats, rows: rows})
     else
       status 404
       body '{"error": "not found"}'
@@ -52,42 +65,41 @@ class Api < Sinatra::Application
     body JSON.generate(gigs.map(&:serialize))
   end
 
-  post "/gigs/:gig_id/orders" do
+  post "/orders" do
     r = JSON.parse(request.body.read)
+    order_id = @app.handle(Commands::StartOrder.new(name: r["name"], email: r["email"]))
+    status 201
+    body JSON.generate({orderId: order_id})
+  end
 
-    if r["email"].nil? || r["email"].empty?
-      status 422
-      body JSON.generate({errors: [{attribute: "email", code: "missing_field", message: "missing attribute `email`"}]})
-      return
-    end
-
-    if r["name"].nil? || r["name"].empty?
-      status 422
-      body JSON.generate({errors: [{attribute: "name", code: "missing_field", message: "missing attribute `name`"}]})
-      return
-    end
-
-    if r["reducedCount"].nil?
-      status 422
-      body JSON.generate({errors: [{attribute: "reducedCount", code: "missing_field", message: "missing attribute `reducedCount`"}]})
-      return
-    end
-
-    if r["seatIds"].nil? || r["seatIds"].empty?
-      status 422
-      body JSON.generate({errors: [{attribute: "seatIds", code: "missing_field", message: "missing attribute `seatIds`"}]})
-      return
-    end
-
-    r = r.merge(gig_id: params[:gig_id], seat_ids: r["seatIds"], reduced_count: r["reducedCount"])
+  put "/orders/:id/finish" do
+    r = JSON.parse(request.body.read)
     begin
-      order_id = @app.handle(Commands::SubmitOrder.new(r))
+      @app.handle(Commands::FinishOrder.new(order_id: params[:id], reduced_count: r["reducedCount"]))
+      status 200
+    rescue Aggregates::Order::CantFinishOrder
+      status 400
+    end
+  end
 
-      status 201
-      body JSON.generate({name: r["name"], id: order_id, email: r["email"], seatIds: r["seatIds"], reducedCount: r["reducedCount"]})
-    rescue App::SeatsReserved => e
-      status 422
-      body JSON.generate({errors: [{attribute: "seatIds", code: "already_exists", message: "Some seats are already reserved"}]})
+  put "/orders/:id/reservations/:seat_id" do
+    begin
+      @app.handle(Commands::ReserveSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
+      status 200
+      body JSON.generate({})
+    rescue Aggregates::Gig::SeatAlreadyReserved => e
+      status 400
+    end
+  end
+
+  delete "/orders/:id/reservations/:seat_id" do
+    begin
+      @app.handle(Commands::FreeSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
+      status 200
+      body JSON.generate({})
+    rescue App::SeatNotReserved => e
+      status 400
+      body JSON.generate(errors: [{message: "seat not reserved by order"}])
     end
   end
 
@@ -102,8 +114,8 @@ class Api < Sinatra::Application
     end
   end
 
-  get "/gigs/:gig_id/orders" do
-    orders = @app.answer(Queries::ListOrdersForGig.new(gig_id: params[:gig_id]))
+  get "/orders" do
+    orders = @app.answer(Queries::ListFinishedOrders.new)
 
     body JSON.generate(orders.map(&:serialize))
   end

@@ -5,6 +5,7 @@ module Events
     include Virtus.model(strict: true)
 
     attribute :aggregate_id, String
+    attribute :created_at, DateTime, default: DateTime.now
 
     def serialize
       {}
@@ -37,9 +38,6 @@ module Events
     end
   end
 
-  class OrderPaid < AbstractEvent
-  end
-
   class SeatsReserved < AbstractEvent
     attribute :seat_ids, Array[String]
     attribute :order_id, String
@@ -53,5 +51,57 @@ module Events
     def serialize
       {}
     end
+  end
+
+  class OrderStarted < AbstractEvent
+    attribute :name, String
+    attribute :email, String
+
+    def serialize
+      {name: name, email: email}
+    end
+  end
+
+  class SeatReserved < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
+
+  class SeatAddedToOrder < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
+
+  class SeatRemovedFromOrder < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
+
+  class SeatFreed < AbstractEvent
+    attribute :seat_id, String
+
+    def serialize
+      {seat_id: seat_id}
+    end
+  end
+
+  class ReducedTicketsSet < AbstractEvent
+    attribute :reduced_count, Integer
+
+    def serialize
+      {reduced_count: reduced_count}
+    end
+  end
+
+  class OrderFinished < AbstractEvent
   end
 end

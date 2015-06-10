@@ -8,6 +8,7 @@ module Commands
   class CreateRow < AbstractCommand
     attribute :y, Integer
     attribute :number, Integer
+    attribute :gig_id, String
   end
 
   class CreateSeat < AbstractCommand
@@ -32,5 +33,25 @@ module Commands
 
   class PayOrder < AbstractCommand
     attribute :order_id, String
+  end
+
+  class StartOrder < AbstractCommand
+    attribute :name, String
+    attribute :email, String
+  end
+
+  class ReserveSeat < AbstractCommand
+    attribute :order_id, String
+    attribute :seat_id, String
+  end
+
+  class FreeSeat < AbstractCommand
+    attribute :order_id, String
+    attribute :seat_id, String
+  end
+
+  class FinishOrder < AbstractCommand
+    attribute :order_id, String
+    attribute :reduced_count, Integer
   end
 end

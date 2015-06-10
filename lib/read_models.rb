@@ -1,14 +1,24 @@
 module ReadModels
   class Order
-    attr_reader :id, :name, :email, :seat_ids, :paid, :reduced_count
+    attr_reader :id, :name, :email, :seat_ids, :paid, :created_at
+    attr_accessor :reduced_count
 
-    def initialize(id, name, email, seat_ids, paid, reduced_count)
+    def initialize(id, name, email, seat_ids, paid, reduced_count, created_at)
       @id = id
       @name = name
       @email = email
       @seat_ids = seat_ids
       @paid = paid
       @reduced_count = reduced_count
+      @created_at = created_at
+    end
+
+    def add_seat(seat_id)
+      @seat_ids << seat_id
+    end
+
+    def remove_seat(seat_id)
+      @seat_ids.delete_if { |s| s == seat_id }
     end
 
     def serialize
@@ -17,7 +27,8 @@ module ReadModels
         email: email,
         seatIds: seat_ids,
         paid: paid,
-        reducedCount: reduced_count
+        reducedCount: reduced_count,
+        created_at: created_at.iso8601
       }
     end
 

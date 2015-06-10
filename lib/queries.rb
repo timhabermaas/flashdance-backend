@@ -3,8 +3,7 @@ module Queries
     include Virtus.model(strict: true)
   end
 
-  class ListOrdersForGig < AbstractQuery
-    attribute :gig_id, String
+  class ListFinishedOrders < AbstractQuery
   end
 
   class ListReservationsForGig < AbstractQuery
@@ -12,6 +11,14 @@ module Queries
   end
 
   class GetFreeSeats < AbstractQuery
+    attribute :gig_id, String
+  end
+
+  class ListSeats < AbstractQuery
+    attribute :gig_id, String
+  end
+
+  class ListRows < AbstractQuery
     attribute :gig_id, String
   end
 end
