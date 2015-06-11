@@ -40,7 +40,7 @@ BIC HEISDE66XXX
 KSK Heilbronn
 
 
-Das Team der HGR Musical AG bedankt sich und wünscht Ihnen viel Spaß in den Sixties mit „HAIRSPRAY“!
+Das Team der HGR Musical AG bedankt sich und wünscht Ihnen viel Spaß in den Eighties mit „FLASHDANCE“!
 
 
 
