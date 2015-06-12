@@ -151,7 +151,7 @@ class App
       end,
       Commands::FreeSeat => handler do |c|
         gig_id = get_gig_id_from_seat(c.seat_id)
-        reservations = fetch_events.reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats_for_order))[c.order_id]
+        reservations = fetch_events_for(aggregate_id: c.order_id).reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats_for_order))[c.order_id]
         if fetch_events_for(aggregate_id: c.order_id).empty?
           raise RecordNotFound.new
         elsif reservations.include?(c.seat_id)
