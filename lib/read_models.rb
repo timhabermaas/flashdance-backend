@@ -16,11 +16,13 @@ module ReadModels
       }
     end
   end
+
   class Order
     attr_reader :id, :name, :email, :seat_ids, :paid, :created_at
     attr_accessor :reduced_count
     attr_accessor :number
     attr_accessor :address
+    attr_accessor :pick_up_beforehand
 
     def initialize(id, name, email, seat_ids, paid, reduced_count, created_at)
       @id = id
@@ -43,6 +45,10 @@ module ReadModels
 
     def add_seat(seat_id)
       @seat_ids << seat_id
+    end
+
+    def pick_up_beforehand?
+      !!@pick_up_beforehand
     end
 
     def number

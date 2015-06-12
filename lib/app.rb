@@ -39,6 +39,8 @@ class ReadRepository
       @orders[event.aggregate_id].finish!
     when Events::OrderPaid
       @orders[event.aggregate_id].pay!
+    when Events::PickUpAtSchoolPicked
+      @orders[event.aggregate_id].pick_up_beforehand = true
     when Events::AddressAdded
       @orders[event.aggregate_id].address = ReadModels::Address.new(event.street, event.postal_code, event.city)
     when Events::SeatReserved
@@ -104,7 +106,7 @@ class App
   def answer(query)
     {
       Queries::ListFinishedOrders => answerer { |q|
-        @read_repo.orders.values.select(&:finished?)
+        @read_repo.orders.values.select(&:finished?).reverse
       },
       Queries::ListReservationsForGig => answerer { |q|
         fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
