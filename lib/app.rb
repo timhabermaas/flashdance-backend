@@ -105,7 +105,7 @@ class App
         @read_repo.orders.values.select(&:finished?)
       },
       Queries::ListReservationsForGig => answerer { |q|
-        fetch_events.reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
+        fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
       },
       Queries::GetFreeSeats => answerer { |q|
         reserved_seats = @read_repo.full_seats_count[q.gig_id]
