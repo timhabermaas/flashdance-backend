@@ -80,7 +80,9 @@ class App
   end
 
   def load_events!
-    @read_repo.update!(fetch_events)
+    fetch_events.each do |event|
+      @read_repo.update!(event)
+    end
   end
 
   def answer(query)
