@@ -39,6 +39,8 @@ class ReadRepository
       @orders[event.aggregate_id].finish!
     when Events::OrderPaid
       @orders[event.aggregate_id].pay!
+    when Events::AddressAdded
+      @orders[event.aggregate_id].address = ReadModels::Address.new(event.street, event.postal_code, event.city)
     when Events::SeatReserved
       @full_seats_count[event.aggregate_id] += 1
     end

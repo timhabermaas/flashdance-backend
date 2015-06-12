@@ -1,8 +1,26 @@
 module ReadModels
+  class Address
+    def initialize(street, postal_code, city)
+      @street = street
+      @postal_code = postal_code
+      @city = city
+    end
+
+    attr_reader :city, :street, :postal_code
+
+    def serialize
+      {
+        city: city,
+        street: street,
+        postalCode: postal_code
+      }
+    end
+  end
   class Order
     attr_reader :id, :name, :email, :seat_ids, :paid, :created_at
     attr_accessor :reduced_count
     attr_accessor :number
+    attr_accessor :address
 
     def initialize(id, name, email, seat_ids, paid, reduced_count, created_at)
       @id = id
@@ -27,6 +45,10 @@ module ReadModels
       @seat_ids << seat_id
     end
 
+    def number
+      @number || -1
+    end
+
     def total_cost
       (@seat_ids.size - @reduced_count) * 1600 + @reduced_count * 1200 + delivery_cost
     end
@@ -37,12 +59,15 @@ module ReadModels
 
     def serialize
       {
+        id: id,
         name: name,
         email: email,
         seatIds: seat_ids,
         paid: paid,
+        number: number,
         reducedCount: reduced_count,
-        createdAt: created_at.iso8601
+        createdAt: created_at.iso8601,
+        address: (address ? address.serialize : nil)
       }
     end
 
