@@ -6,7 +6,7 @@ require "commands"
 
 module IntegrationHelpers
   def internal_app
-    @app ||= App.new("postgres://localhost:5432/flashdance_test", false)
+    @app ||= App.new("postgres://localhost:5432/flashdance_test", "user123", "admin123", false)
   end
 
   def app

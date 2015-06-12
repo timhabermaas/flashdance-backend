@@ -59,7 +59,7 @@ class App
   class SeatAlreadyReserved < DomainError; end
   class SeatNotReserved < DomainError; end
 
-  def initialize(database_url, logging=true)
+  def initialize(database_url, user_pw, admin_pw, logging=true)
     loggers = logging ? [Logger.new($stdout)] : []
     @connection = Sequel.connect(database_url, loggers: loggers)
     Sequel.application_timezone = "Berlin"
@@ -71,6 +71,7 @@ class App
     else
       @mailer = PrintMailer.new
     end
+    @users = { "user" => {password: user_pw, role: "user"}, "admin" => {password: admin_pw, role: "admin"} }
     @read_repo = ReadRepository.new
   end
 
@@ -82,6 +83,19 @@ class App
   def load_events!
     fetch_events.each do |event|
       @read_repo.update!(event)
+    end
+  end
+
+  def login(user, password)
+    # TODO broken return type
+    if user = @users[user]
+      if user[:password] == password
+        user[:role]
+      else
+        false
+      end
+    else
+      false
     end
   end
 

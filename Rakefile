@@ -17,7 +17,7 @@ end
 
 def build_app
   database_url = ENV.fetch("DATABASE_URL") { "postgres://localhost:5432/flashdance_development" }
-  App.new(database_url, true)
+  App.new(database_url, "foo", "bar", true)
 end
 
 def create_gig(app, title:, date:)

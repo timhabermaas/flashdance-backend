@@ -42,6 +42,16 @@ class Api < Sinatra::Application
     status 404
   end
 
+  post "/login" do
+    r = JSON.parse(request.body.read)
+    if role = @app.login(r["user"], r["password"])
+      status 200
+      body JSON.generate(role: role)
+    else
+      status 401
+    end
+  end
+
   get "/gigs/:gig_id/seats" do
     if DBModels::Gig[params[:gig_id]]
       status 200
