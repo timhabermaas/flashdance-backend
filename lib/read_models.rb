@@ -42,7 +42,7 @@ module ReadModels
         seatIds: seat_ids,
         paid: paid,
         reducedCount: reduced_count,
-        created_at: created_at.iso8601
+        createdAt: created_at.iso8601
       }
     end
 
