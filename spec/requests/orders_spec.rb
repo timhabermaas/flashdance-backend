@@ -168,7 +168,7 @@ RSpec.describe "orders API endpoint" do
     end
   end
 
-  describe "PUT /orders/:id/pick_up" do
+  describe "PUT /orders/:id/finish" do
     before do
       post "/orders", JSON.generate({email: "hans@mustermann.de",
                                      name: "Hans Mustermann"})
@@ -192,22 +192,49 @@ RSpec.describe "orders API endpoint" do
     context "at least one seat reserved" do
       before do
         put "/orders/#{@order_id}/reservations/#{@id_1}"
-
-        put "/orders/#{@order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
       end
 
-      it "returns 200 Ok" do
-        expect(last_status).to eq 200
+      context "address set" do
+        let(:address) { {street: "foo street 2", postalCode: "52351", city: "Bar"} }
+
+        before do
+          put "/orders/#{@order_id}/finish", JSON.generate({reducedCount: 1, address: address})
+        end
+
+        it "returns 200 Ok" do
+          expect(last_status).to eq 200
+        end
+
+        it "adds the order to the /orders endpoint" do
+          get "/orders"
+
+          expect(json_response.size).to eq 1
+          expect(json_response.first["name"]).to eq "Hans Mustermann"
+          expect(json_response.first["email"]).to eq "hans@mustermann.de"
+          expect(json_response.first["seatIds"]).to eq [@id_1]
+          expect(json_response.first["reducedCount"]).to eq 1
+          expect(json_response.first["address"]).to eq({"street" => "foo street 2", "postalCode" => "52351", "city" => "Bar"})
+        end
       end
 
-      it "adds the order to the /orders endpoint" do
-        get "/orders"
+      context "no address set" do
+        before do
+          put "/orders/#{@order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
+        end
 
-        expect(json_response.size).to eq 1
-        expect(json_response.first["name"]).to eq "Hans Mustermann"
-        expect(json_response.first["email"]).to eq "hans@mustermann.de"
-        expect(json_response.first["seatIds"]).to eq [@id_1]
-        expect(json_response.first["reducedCount"]).to eq 1
+        it "returns 200 Ok" do
+          expect(last_status).to eq 200
+        end
+
+        it "adds the order to the /orders endpoint" do
+          get "/orders"
+
+          expect(json_response.size).to eq 1
+          expect(json_response.first["name"]).to eq "Hans Mustermann"
+          expect(json_response.first["email"]).to eq "hans@mustermann.de"
+          expect(json_response.first["seatIds"]).to eq [@id_1]
+          expect(json_response.first["reducedCount"]).to eq 1
+        end
       end
     end
 
@@ -261,7 +288,20 @@ RSpec.describe "orders API endpoint" do
     end
 
     context "order is already paid" do
-      pending
+      before do
+        post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                       name: "Peter Heinzelmann"})
+        order_id = json_response["orderId"]
+        put "/orders/#{order_id}/reservations/#{@id_2}"
+        put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
+
+        put "/orders/#{order_id}/pay"
+        put "/orders/#{order_id}/pay"
+      end
+
+      it "returns 400 Bad Request" do
+        expect(last_status).to eq 400
+      end
     end
   end
 end

@@ -35,6 +35,7 @@ module Aggregates
 
   class Order
     class CantFinishOrder < StandardError; end
+    class OrderAlreadyPaid < StandardError; end
 
     def initialize(events)
       @reserved_seats = Set.new
@@ -50,6 +51,8 @@ module Aggregates
         @reserved_seats.delete(event.seat_id)
       when Events::OrderStarted
         @order_id = event.aggregate_id
+      when Events::OrderPaid
+        @paid = true
       end
     end
     private :apply
@@ -74,6 +77,11 @@ module Aggregates
         Events::AddressAdded.new(aggregate_id: @order_id, street: street, postal_code: postal_code, city: city),
         Events::OrderFinished.new(aggregate_id: @order_id)
       ]
+    end
+
+    def pay!
+      raise OrderAlreadyPaid if @paid
+      [Events::OrderPaid.new(aggregate_id: @order_id)]
     end
 
     def reserve_seat!(gig, seat_id)

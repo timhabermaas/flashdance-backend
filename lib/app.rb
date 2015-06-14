@@ -133,9 +133,10 @@ class App
       Commands::PayOrder => handler do |c|
         events = fetch_events_for(aggregate_id: c.order_id)
         if events.empty?
-          raise ArgumentError
+          raise RecordNotFound
         else
-          persist_events([Events::OrderPaid.new(aggregate_id: c.order_id)])
+          order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
+          persist_events order.pay!
         end
       end,
       Commands::StartOrder => handler do |c|

@@ -40,6 +40,7 @@ class Api < Sinatra::Application
 
   error App::RecordNotFound do
     status 404
+    body JSON.generate(error: "not found")
   end
 
   post "/login" do
@@ -125,9 +126,9 @@ class Api < Sinatra::Application
       @app.handle(Commands::PayOrder.new(order_id: params["order_id"]))
       status 200
       body JSON.generate({})
-    rescue ArgumentError
-      status 404
-      body '{"error": "not found"}'
+    rescue Aggregates::Order::OrderAlreadyPaid
+      status 400
+      body JSON.generate(errors: [{message: "order already paid"}])
     end
   end
 
