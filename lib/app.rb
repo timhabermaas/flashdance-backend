@@ -6,52 +6,11 @@ require "events"
 require "aggregates"
 require "read_models"
 require "sendgrid_mailer"
+require "read_repository"
 
 require "sequel"
 require "securerandom"
 
-class ReadRepository
-  attr_reader :orders
-  attr_reader :full_seats_count
-
-  def initialize
-    reset!
-  end
-
-  def reset!
-    @orders = {}
-    @full_seats_count = Hash.new(0)
-  end
-
-  def update!(event)
-    case event
-    when Events::OrderStarted
-      @orders[event.aggregate_id] = ReadModels::Order.new(event.aggregate_id, event.name, event.email, [], false, 0, event.created_at)
-    when Events::OrderNumberSet
-      @orders[event.aggregate_id].number = event.number
-    when Events::SeatAddedToOrder
-      @orders[event.aggregate_id].add_seat(event.seat_id)
-    when Events::SeatRemovedFromOrder
-      @orders[event.aggregate_id].remove_seat(event.seat_id)
-    when Events::ReducedTicketsSet
-      @orders[event.aggregate_id].reduced_count = event.reduced_count
-    when Events::OrderFinished
-      @orders[event.aggregate_id].finish!
-    when Events::OrderPaid
-      @orders[event.aggregate_id].pay!
-    when Events::OrderUnpaid
-      @orders[event.aggregate_id].unpay!
-    when Events::PickUpAtSchoolPicked
-      @orders[event.aggregate_id].pick_up_beforehand = true
-    when Events::AddressAdded
-      @orders[event.aggregate_id].address = ReadModels::Address.new(event.street, event.postal_code, event.city)
-    when Events::SeatReserved
-      @full_seats_count[event.aggregate_id] += 1
-    when Events::SeatFreed
-      @full_seats_count[event.aggregate_id] -= 1
-    end
-  end
-end
 
 class PrintMailer
   def send_confirmation_mail order
@@ -113,10 +72,10 @@ class App
         @read_repo.orders.values.select(&:finished?).reverse
       },
       Queries::ListReservationsForGig => answerer { |q|
-        fetch_events_for(aggregate_id: q.gig_id).reduce(Hash.new { |h, key| h[key] = []}, &self.method(:update_reservations))[q.gig_id]
+        @read_repo.reservations[q.gig_id]
       },
       Queries::GetFreeSeats => answerer { |q|
-        reserved_seats = @read_repo.full_seats_count[q.gig_id]
+        reserved_seats = @read_repo.full_seats_count(q.gig_id)
         all_seats = DBModels::Seat.join(:rows, id: :row_id).where(gig_id: q.gig_id).where(usable: true).count
         all_seats - reserved_seats
       },
@@ -223,19 +182,6 @@ class App
 
     def answerer(&block)
       QueryHandlers::GenericHandler.new(&block)
-    end
-
-    def update_reservations(reservations, event)
-      case event
-      when Events::SeatReserved
-        reservations[event.aggregate_id] += [ReadModels::Reservation.new(event.seat_id)]
-        reservations
-      when Events::SeatFreed
-        reservations[event.aggregate_id].delete_if { |r| r.seat_id == event.seat_id }
-        reservations
-      else
-        reservations
-      end
     end
 
     def update_reserved_seats(reservations, event)
