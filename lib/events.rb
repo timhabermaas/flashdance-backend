@@ -36,6 +36,12 @@ module Events
     end
   end
 
+  class OrderUnpaid < AbstractEvent
+    def serialize
+      {}
+    end
+  end
+
   class AddressAdded < AbstractEvent
     attribute :street, String
     attribute :postal_code, String

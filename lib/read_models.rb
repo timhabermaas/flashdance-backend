@@ -81,6 +81,10 @@ module ReadModels
       @paid = true
     end
 
+    def unpay!
+      @paid = false
+    end
+
     private
       def delivery_cost
         @address ? 300 : 0

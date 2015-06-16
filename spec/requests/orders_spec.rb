@@ -310,4 +310,61 @@ RSpec.describe "orders API endpoint" do
       end
     end
   end
+
+  describe "PUT /orders/:id/unpay" do
+    context "order doesn't exist" do
+      before do
+        put "/orders/#{SecureRandom.uuid}/unpay"
+      end
+
+      it "returns 404 not found" do
+        expect(last_status).to eq 404
+      end
+
+      it "returns a json response containing 'not found'" do
+        expect(json_response["error"]).to eq "not found"
+      end
+    end
+
+    context "order is already paid" do
+      before do
+        post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                       name: "Peter Heinzelmann"})
+        order_id = json_response["orderId"]
+        put "/orders/#{order_id}/reservations/#{@id_1}"
+        put "/orders/#{order_id}/reservations/#{@id_2}"
+        put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
+
+        put "/orders/#{order_id}/pay"
+
+        put "/orders/#{order_id}/unpay"
+      end
+
+      it "returns 200 Ok" do
+        expect(last_status).to eq 200
+      end
+
+      it "sets the order to unpaid" do
+        get "/orders"
+
+        expect(json_response.first["paid"]).to eq false
+      end
+    end
+
+    context "order isn't paid yet" do
+      before do
+        post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                       name: "Peter Heinzelmann"})
+        order_id = json_response["orderId"]
+        put "/orders/#{order_id}/reservations/#{@id_2}"
+        put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
+
+        put "/orders/#{order_id}/unpay"
+      end
+
+      it "returns 400 Bad Request" do
+        expect(last_status).to eq 400
+      end
+    end
+  end
 end

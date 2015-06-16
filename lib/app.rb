@@ -39,6 +39,8 @@ class ReadRepository
       @orders[event.aggregate_id].finish!
     when Events::OrderPaid
       @orders[event.aggregate_id].pay!
+    when Events::OrderUnpaid
+      @orders[event.aggregate_id].unpay!
     when Events::PickUpAtSchoolPicked
       @orders[event.aggregate_id].pick_up_beforehand = true
     when Events::AddressAdded
@@ -132,6 +134,15 @@ class App
       Commands::CreateRow => handler { |c| DBModels::Row.create(y: c.y, number: c.number, gig_id: c.gig_id) },
       Commands::CreateSeat => handler { |c| DBModels::Seat.create(x: c.x, number: c.number, usable: c.usable, row_id: c.row_id) },
       Commands::CreateGig => handler { |c| DBModels::Gig.create(title: c.title, date: c.date) },
+      Commands::UnpayOrder => handler do |c|
+        events = fetch_events_for(aggregate_id: c.order_id)
+        if events.empty?
+          raise RecordNotFound
+        else
+          order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
+          persist_events order.unpay!
+        end
+      end,
       Commands::PayOrder => handler do |c|
         events = fetch_events_for(aggregate_id: c.order_id)
         if events.empty?

@@ -132,6 +132,17 @@ class Api < Sinatra::Application
     end
   end
 
+  put "/orders/:order_id/unpay" do
+    begin
+      @app.handle(Commands::UnpayOrder.new(order_id: params["order_id"]))
+      status 200
+      body JSON.generate({})
+    rescue Aggregates::Order::OrderNotYetPaid
+      status 400
+      body JSON.generate(errors: [{message: "order not yet paid"}])
+    end
+  end
+
   get "/orders" do
     orders = @app.answer(Queries::ListFinishedOrders.new)
 

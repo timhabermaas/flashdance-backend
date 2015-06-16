@@ -36,6 +36,7 @@ module Aggregates
   class Order
     class CantFinishOrder < StandardError; end
     class OrderAlreadyPaid < StandardError; end
+    class OrderNotYetPaid < StandardError; end
 
     def initialize(events)
       @reserved_seats = Set.new
@@ -82,6 +83,11 @@ module Aggregates
     def pay!
       raise OrderAlreadyPaid if @paid
       [Events::OrderPaid.new(aggregate_id: @order_id)]
+    end
+
+    def unpay!
+      raise OrderNotYetPaid if !@paid
+      [Events::OrderUnpaid.new(aggregate_id: @order_id)]
     end
 
     def reserve_seat!(gig, seat_id)
