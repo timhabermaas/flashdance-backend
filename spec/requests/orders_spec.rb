@@ -118,6 +118,12 @@ RSpec.describe "orders API endpoint" do
         expect(json_response).to eq({})
       end
 
+      it "updates the free seat count" do
+        get "/gigs"
+
+        expect(json_response.first["freeSeats"]).to eq 2
+      end
+
       context "let's user reserve seat again" do
         before do
           put "/orders/#{@order_id}/reservations/#{@id_1}"
