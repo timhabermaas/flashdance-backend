@@ -60,6 +60,6 @@ www.hgr-musical.de
 
     body = ERB.new(body).result(binding)
 
-    Pony.mail(to: order.email, from: "ticketing@hgr-musical.de", subject: "Ihre Ticket-Bestellung für „FLASHDANCE – The Musical“", body: body)
+    Pony.mail(to: order.email, from: "ticketing@hgr-musical.de", bcc: "ticketing@hgr-musical.de", subject: "Ihre Ticket-Bestellung für „FLASHDANCE – The Musical“", body: body)
   end
 end
