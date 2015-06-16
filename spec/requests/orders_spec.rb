@@ -3,6 +3,16 @@ require "spec_helper"
 require "rack/test"
 
 RSpec.describe "orders API endpoint" do
+  def create_finished_order
+    post "/orders", JSON.generate({email: "peter@heinzelmann.de",
+                                   name: "Peter Heinzelmann"})
+    order_id = json_response["orderId"]
+    put "/orders/#{order_id}/reservations/#{@id_2}"
+    put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
+
+    order_id
+  end
+
   include Rack::Test::Methods
 
   before do
@@ -255,6 +265,39 @@ RSpec.describe "orders API endpoint" do
     end
   end
 
+  describe "DELETE /orders/:id" do
+    context "order doesn't exist" do
+      before do
+        delete "/orders/#{SecureRandom.uuid}"
+      end
+
+      it "returns 404 Not Found" do
+        expect(last_status).to eq 404
+      end
+    end
+
+    context "order does exist" do
+      before do
+        order_id = create_finished_order
+        delete "/orders/#{order_id}"
+      end
+
+      it "returns 200 Ok" do
+        expect(last_status).to eq 200
+      end
+
+      it "removes the order form /orders" do
+        get "/orders"
+        expect(json_response).to eq []
+      end
+
+      it "removes the reservations from /reservations" do
+        get "/gigs/#{gig_id}/reservations"
+        expect(json_response).to eq []
+      end
+    end
+  end
+
   describe "PUT /orders/:id/pay" do
     context "order doesn't exist" do
       before do
@@ -295,12 +338,7 @@ RSpec.describe "orders API endpoint" do
 
     context "order is already paid" do
       before do
-        post "/orders", JSON.generate({email: "peter@heinzelmann.de",
-                                       name: "Peter Heinzelmann"})
-        order_id = json_response["orderId"]
-        put "/orders/#{order_id}/reservations/#{@id_2}"
-        put "/orders/#{order_id}/finish", JSON.generate({reducedCount: 1, type: "pickUpBeforehand"})
-
+        order_id = create_finished_order
         put "/orders/#{order_id}/pay"
         put "/orders/#{order_id}/pay"
       end

@@ -121,6 +121,12 @@ class Api < Sinatra::Application
     end
   end
 
+  delete "/orders/:id" do
+    @app.handle(Commands::CancelOrder.new(order_id: params[:id]))
+    status 200
+    body JSON.generate({})
+  end
+
   put "/orders/:order_id/pay" do
     begin
       @app.handle(Commands::PayOrder.new(order_id: params["order_id"]))

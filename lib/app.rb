@@ -158,6 +158,12 @@ class App
         persist_events(events)
         order = @read_repo.orders[c.order_id]
         @mailer.send_confirmation_mail(order)
+      end,
+      Commands::CancelOrder => handler do |c|
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          l = lambda { |seat_id| gig_id = get_gig_id_from_seat(seat_id); Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id)) }
+          order.cancel!(l)
+        end
       end
     }.fetch(command.class).handle(command)
   end
@@ -236,8 +242,15 @@ class App
     end
 
     def fetch_domain(klass:, aggregate_id:)
-      events = fetch_events_for(aggregate_id: aggregate_id)
-      klass.new(events)
+      if block_given?
+        events = fetch_events_for(aggregate_id: aggregate_id)
+        raise RecordNotFound if events.empty?
+        events = yield klass.new(events)
+        persist_events events
+      else
+        events = fetch_events_for(aggregate_id: aggregate_id)
+        klass.new(events)
+      end
     end
 
     def get_gig_id_from_seat(seat_id)

@@ -59,4 +59,8 @@ module Commands
     attribute :postal_code, String
     attribute :city, String
   end
+
+  class CancelOrder < AbstractCommand
+    attribute :order_id, String
+  end
 end

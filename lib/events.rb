@@ -120,4 +120,7 @@ module Events
 
   class OrderFinished < AbstractEvent
   end
+
+  class OrderCanceled < AbstractEvent
+  end
 end
