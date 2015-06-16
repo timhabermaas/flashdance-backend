@@ -12,14 +12,6 @@ module Events
     end
   end
 
-  class AvailableSeatsDetermined < AbstractEvent
-    attribute :seat_ids, Array[String]
-
-    def serialize
-      {seat_ids: seat_ids}
-    end
-  end
-
   class OrderPlaced < AbstractEvent
     attribute :name, String
     attribute :email, String
