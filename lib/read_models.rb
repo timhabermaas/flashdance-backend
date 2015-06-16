@@ -83,7 +83,7 @@ module ReadModels
 
     private
       def delivery_cost
-        @delivery ? 300 : 0
+        @address ? 300 : 0
       end
   end
 
