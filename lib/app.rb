@@ -77,6 +77,11 @@ class App
       Queries::ListFinishedOrders => answerer { |q|
         @read_repo.orders.values.select(&:finished?).reverse
       },
+      Queries::ListObsoleteOrders => answerer { |q|
+        @read_repo.orders.values.select do |order|
+          !order.finished? && order.created_at <= (DateTime.now - 1)
+        end
+      },
       Queries::ListReservationsForGig => answerer { |q|
         @read_repo.reservations[q.gig_id]
       },

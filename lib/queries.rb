@@ -6,6 +6,9 @@ module Queries
   class ListFinishedOrders < AbstractQuery
   end
 
+  class ListObsoleteOrders < AbstractQuery
+  end
+
   class ListReservationsForGig < AbstractQuery
     attribute :gig_id, String
   end

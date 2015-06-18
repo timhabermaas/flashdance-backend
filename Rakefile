@@ -32,6 +32,19 @@ def create_row(app, gig_id:, y:, number:)
   app.handle(Commands::CreateRow.new(gig_id: gig_id, y: y, number: number))
 end
 
+namespace :cleanup do
+  task :orders do
+    app = build_app
+    app.load_models!
+    app.load_events!
+    orders = app.answer(Queries::ListObsoleteOrders.new)
+    orders.each do |order|
+      puts "removing order ##{order.number}, #{order.name}"
+      build_app.handle(Commands::CancelOrder.new(order_id: order.id))
+    end
+  end
+end
+
 namespace :db do
   task :migrate do
     build_app.migrate!
