@@ -33,6 +33,8 @@ class ReadRepository
       @orders[event.aggregate_id].pay!
     when Events::OrderUnpaid
       @orders[event.aggregate_id].unpay!
+    when Events::OrderCanceled
+      @orders.delete(event.aggregate_id)
     when Events::PickUpAtSchoolPicked
       @orders[event.aggregate_id].pick_up_beforehand = true
     when Events::AddressAdded

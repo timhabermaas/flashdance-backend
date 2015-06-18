@@ -24,6 +24,14 @@ module Aggregates
       @reserved_seats.include?(seat_id)
     end
 
+    def free_seat!(seat_id)
+      if seat_reserved?(seat_id)
+        [Events::SeatFreed.new(aggregate_id: @id, seat_id: seat_id)]
+      else
+        []
+      end
+    end
+
     def reserve_seat!(seat_id)
       if seat_reserved?(seat_id)
         raise SeatAlreadyReserved.new(seat_id)
@@ -54,6 +62,8 @@ module Aggregates
         @order_id = event.aggregate_id
       when Events::OrderPaid
         @paid = true
+      when Events::OrderPaid
+        @canceled = true
       end
     end
     private :apply
@@ -88,6 +98,15 @@ module Aggregates
     def unpay!
       raise OrderNotYetPaid if !@paid
       [Events::OrderUnpaid.new(aggregate_id: @order_id)]
+    end
+
+    def cancel!(gigs)
+      return if @canceled
+      events = [Events::OrderCanceled.new(aggregate_id: @order_id)]
+      @reserved_seats.each do |seat_id|
+        events += gigs[seat_id].free_seat!(seat_id)
+      end
+      events
     end
 
     def reserve_seat!(gig, seat_id)
