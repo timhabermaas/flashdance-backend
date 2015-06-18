@@ -13,6 +13,12 @@ require "securerandom"
 
 
 class PrintMailer
+  def send_payment_confirmation_mail order
+    puts "SENDING PAYMENT CONFIRMATION E-MAIL"
+    p order
+    puts
+  end
+
   def send_confirmation_mail order
     puts "SENDING E-MAIL WITH INFOS"
     p order
@@ -109,6 +115,8 @@ class App
         else
           order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
           persist_events order.pay!
+          order = @read_repo.orders[c.order_id]
+          @mailer.send_payment_confirmation_mail(order)
         end
       end,
       Commands::StartOrder => handler do |c|

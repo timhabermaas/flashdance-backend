@@ -51,6 +51,10 @@ module ReadModels
       !!@pick_up_beforehand
     end
 
+    def delivery?
+      !!address
+    end
+
     def number
       @number || -1
     end
