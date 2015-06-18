@@ -62,7 +62,9 @@ module Aggregates
         @order_id = event.aggregate_id
       when Events::OrderPaid
         @paid = true
-      when Events::OrderPaid
+      when Events::OrderUnpaid
+        @paid = false
+      when Events::OrderCanceled
         @canceled = true
       end
     end
@@ -74,7 +76,7 @@ module Aggregates
 
       [
         Events::ReducedTicketsSet.new(aggregate_id: @order_id, reduced_count: reduced_count),
-        (if type == "pickUpBeforehand" then Events::PickUpBeforeGigPicked.new(aggregate_id: @order_id) else Events::PickUpAtSchoolPicked.new(aggregate_id: @order_id) end),
+        (if type == "pickUpBeforehand" then Events::PickUpAtSchoolPicked.new(aggregate_id: @order_id) else Events::PickUpBeforeGigPicked.new(aggregate_id: @order_id) end),
         Events::OrderFinished.new(aggregate_id: @order_id)
       ]
     end
