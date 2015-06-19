@@ -21,6 +21,30 @@ class Api < Sinatra::Application
     @app = app
   end
 
+  def error_to_response(error)
+    case error
+    when Aggregates::Order::OrderAlreadyPaid
+      status 400
+      body JSON.generate(errors: [{message: "order already paid"}])
+    when Aggregates::Order::OrderNotYetPaid
+      status 400
+      body JSON.generate(errors: [{message: "order not yet paid"}])
+    when App::SeatNotReserved
+      status 400
+      body JSON.generate(errors: [{message: "seat not reserved by order"}])
+    else
+      status 400
+    end
+  end
+
+  def result_to_response(result, &block)
+    result.and_then(&block)
+    result.on_error do |error|
+      error_to_response error
+      Error(UNIT)
+    end
+  end
+
   before do
     headers "Access-Control-Allow-Origin" => "*"
     headers "Access-Control-Allow-Methods" => "GET,PUT,POST,DELETE"
@@ -78,74 +102,74 @@ class Api < Sinatra::Application
 
   post "/orders" do
     r = JSON.parse(request.body.read)
-    order_id = @app.handle(Commands::StartOrder.new(name: r["name"], email: r["email"]))
-    status 201
-    body JSON.generate({orderId: order_id})
+    order_id =
+    result_to_response(@app.handle(Commands::StartOrder.new(name: r["name"], email: r["email"]))) do |order_id|
+      status 201
+      body JSON.generate({orderId: order_id})
+      Ok(nil)
+    end
   end
 
   # type can be "pickUpBeforehand" or "pickUpBoxOffice"
   # if address is set, it's automatically delivered
   put "/orders/:id/finish" do
     r = JSON.parse(request.body.read)
-    begin
-      if address = r["address"]
-        @app.handle(Commands::FinishOrderWithAddress.new(street: address["street"], postal_code: address["postalCode"], city: address["city"], order_id: params[:id], reduced_count: r["reducedCount"]))
-      else
-        @app.handle(Commands::FinishOrder.new(type: r["type"], order_id: params[:id], reduced_count: r["reducedCount"]))
+    if address = r["address"]
+      c = Commands::FinishOrderWithAddress.new(street: address["street"], postal_code: address["postalCode"], city: address["city"], order_id: params[:id], reduced_count: r["reducedCount"])
+      result_to_response(@app.handle(c)) do
+        status 200
+        body JSON.generate({})
+        Ok(UNIT)
       end
-      status 200
-      body JSON.generate({})
-    rescue Aggregates::Order::CantFinishOrder
-      status 400
+    else
+      c = Commands::FinishOrder.new(type: r["type"], order_id: params[:id], reduced_count: r["reducedCount"])
+      result_to_response(@app.handle(c)) do
+        status 200
+        body JSON.generate({})
+        Ok(UNIT)
+      end
     end
   end
 
   put "/orders/:id/reservations/:seat_id" do
-    begin
-      @app.handle(Commands::ReserveSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
+    c = Commands::ReserveSeat.new(order_id: params[:id], seat_id: params[:seat_id])
+    result_to_response(@app.handle(c)) do
       status 200
       body JSON.generate({})
-    rescue Aggregates::Gig::SeatAlreadyReserved => e
-      status 400
+      Ok(nil)
     end
   end
 
   delete "/orders/:id/reservations/:seat_id" do
-    begin
-      @app.handle(Commands::FreeSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
+    c = Commands::FreeSeat.new(order_id: params[:id], seat_id: params[:seat_id])
+    result_to_response(@app.handle(c)) do
       status 200
       body JSON.generate({})
-    rescue App::SeatNotReserved => e
-      status 400
-      body JSON.generate(errors: [{message: "seat not reserved by order"}])
+      Ok(nil)
     end
   end
 
   delete "/orders/:id" do
-    @app.handle(Commands::CancelOrder.new(order_id: params[:id]))
-    status 200
-    body JSON.generate({})
+    result_to_response(@app.handle(Commands::CancelOrder.new(order_id: params[:id]))) do
+      status 200
+      body JSON.generate({})
+      Ok(nil)
+    end
   end
 
   put "/orders/:order_id/pay" do
-    begin
-      @app.handle(Commands::PayOrder.new(order_id: params["order_id"]))
+    result_to_response(@app.handle(Commands::PayOrder.new(order_id: params["order_id"]))) do
       status 200
       body JSON.generate({})
-    rescue Aggregates::Order::OrderAlreadyPaid
-      status 400
-      body JSON.generate(errors: [{message: "order already paid"}])
+      Ok(nil)
     end
   end
 
   put "/orders/:order_id/unpay" do
-    begin
-      @app.handle(Commands::UnpayOrder.new(order_id: params["order_id"]))
+    result_to_response(@app.handle(Commands::UnpayOrder.new(order_id: params["order_id"]))) do
       status 200
       body JSON.generate({})
-    rescue Aggregates::Order::OrderNotYetPaid
-      status 400
-      body JSON.generate(errors: [{message: "order not yet paid"}])
+      Ok(nil)
     end
   end
 

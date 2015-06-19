@@ -1,4 +1,5 @@
 require "erb"
+require "result"
 
 class Mailer
   def initialize(postman)
@@ -46,6 +47,7 @@ EOS
     body = ERB.new(body).result(binding)
 
     @postman.mail(to: order.email, from: "ticketing@hgr-musical.de", bcc: "ticketing@hgr-musical.de", subject: "Bestätigung Zahlungseingang für Ihre Tickets zu „FLASHDANCE – The Musical“", body: body)
+    Ok(nil)
   end
 
   def send_confirmation_mail order
@@ -91,6 +93,7 @@ www.hgr-musical.de
     body = ERB.new(body).result(binding)
 
     @postman.mail(to: order.email, from: "ticketing@hgr-musical.de", bcc: "ticketing@hgr-musical.de", subject: "Ihre Ticket-Bestellung für „FLASHDANCE – The Musical“", body: body)
+    Ok(nil)
   end
 
   private

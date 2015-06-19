@@ -5,14 +5,14 @@ RSpec.describe "/gigs" do
   include Rack::Test::Methods
 
   before do
-    id = internal_app.handle(Commands::CreateGig.new(title: "1. gig", date: DateTime.new(2014, 2, 3, 12, 30, 00, '+1'))).id
-    other_id = internal_app.handle(Commands::CreateGig.new(title: "3. gig", date: DateTime.new(2014, 2, 5, 15, 30, 00, '+1'))).id
+    id = internal_app.handle(Commands::CreateGig.new(title: "1. gig", date: DateTime.new(2014, 2, 3, 12, 30, 00, '+1'))).unwrap.id
+    other_id = internal_app.handle(Commands::CreateGig.new(title: "3. gig", date: DateTime.new(2014, 2, 5, 15, 30, 00, '+1'))).unwrap.id
     internal_app.handle(Commands::CreateGig.new(title: "2. gig", date: DateTime.new(2014, 2, 4, 15, 30, 00, '+1')))
 
     3.times { create_seat(id) }
     create_seat(other_id)
     seat_id = create_seat(id).id
-    order_id = internal_app.handle(Commands::StartOrder.new(name: "foo", email: "bar@cow.com"))
+    order_id = internal_app.handle(Commands::StartOrder.new(name: "foo", email: "bar@cow.com")).unwrap
     internal_app.handle(Commands::ReserveSeat.new(order_id: order_id, seat_id: seat_id))
 
     get "/gigs"

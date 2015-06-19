@@ -5,6 +5,8 @@ ruby '2.1.2'
 gem 'sinatra'
 gem 'puma'
 
+gem 'contracts'
+
 gem 'virtus'
 
 gem 'pg'

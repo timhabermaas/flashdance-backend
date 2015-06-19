@@ -13,12 +13,16 @@ require "read_repository"
 require "sequel"
 require "securerandom"
 
+require "contracts"
+
+UNIT = nil
 
 
 class App
+  include Contracts
+
   class DomainError < StandardError; end
   class RecordNotFound < StandardError; end
-  class SeatAlreadyReserved < DomainError; end
   class SeatNotReserved < DomainError; end
 
   def initialize(database_url, user_pw, admin_pw, logging=true)
@@ -89,11 +93,12 @@ class App
     }.fetch(query.class).answer(query)
   end
 
+  Contract Commands::AbstractCommand => Result
   def handle(command)
     {
-      Commands::CreateRow => handler { |c| DBModels::Row.create(y: c.y, number: c.number, gig_id: c.gig_id) },
-      Commands::CreateSeat => handler { |c| DBModels::Seat.create(x: c.x, number: c.number, usable: c.usable, row_id: c.row_id) },
-      Commands::CreateGig => handler { |c| DBModels::Gig.create(title: c.title, date: c.date) },
+      Commands::CreateRow => handler { |c| row = DBModels::Row.create(y: c.y, number: c.number, gig_id: c.gig_id); Ok(row) },
+      Commands::CreateSeat => handler { |c| seat = DBModels::Seat.create(x: c.x, number: c.number, usable: c.usable, row_id: c.row_id); Ok(seat) },
+      Commands::CreateGig => handler { |c| gig = DBModels::Gig.create(title: c.title, date: c.date); Ok(gig) },
       Commands::UnpayOrder => handler do |c|
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
           order.unpay!
@@ -102,24 +107,23 @@ class App
       Commands::PayOrder => handler do |c|
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
           order.pay!
+        end.and_then do
+          order = @read_repo.orders[c.order_id]
+          @mailer.send_payment_confirmation_mail(order)
         end
-        order = @read_repo.orders[c.order_id]
-        @mailer.send_payment_confirmation_mail(order)
       end,
       Commands::StartOrder => handler do |c|
         order_id = SecureRandom.uuid
         persist_events([Events::OrderStarted.new(aggregate_id: order_id, name: c.name, email: c.email), Events::OrderNumberSet.new(aggregate_id: order_id, number: @connection[:events].count + 1000)])
-        order_id
+        Ok(order_id)
       end,
       Commands::ReserveSeat => handler do |c|
         gig_id = get_gig_id_from_seat(c.seat_id)
         gig = Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id))
 
-        order_events = fetch_events_for(aggregate_id: c.order_id)
-        raise RecordNotFound.new if order_events.empty?
-        order = Aggregates::Order.new(order_events)
-
-        persist_events order.reserve_seat!(gig, c.seat_id)
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          order.reserve_seat!(gig, c.seat_id)
+        end
       end,
       Commands::FreeSeat => handler do |c|
         gig_id = get_gig_id_from_seat(c.seat_id)
@@ -132,23 +136,26 @@ class App
             Events::SeatFreed.new(aggregate_id: gig_id, seat_id: c.seat_id)
           ]
           persist_events(events)
+          Ok(nil)
         else
-          raise SeatNotReserved.new(c.seat_id)
+          Error(SeatNotReserved.new(c.seat_id))
         end
       end,
       Commands::FinishOrder => handler do |c|
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
-          events = order.finish!(c.reduced_count, c.type)
+          order.finish!(c.reduced_count, c.type)
+        end.and_then do
+          order = @read_repo.orders[c.order_id]
+          @mailer.send_confirmation_mail(order)
         end
-        order = @read_repo.orders[c.order_id]
-        @mailer.send_confirmation_mail(order)
       end,
       Commands::FinishOrderWithAddress => handler do |c|
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
           order.finish_and_deliver!(c.reduced_count, c.street, c.postal_code, c.city)
+        end.and_then do
+          order = @read_repo.orders[c.order_id]
+          @mailer.send_confirmation_mail(order)
         end
-        order = @read_repo.orders[c.order_id]
-        @mailer.send_confirmation_mail(order)
       end,
       Commands::CancelOrder => handler do |c|
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
@@ -224,6 +231,7 @@ class App
         events.each { |e| persist_event(e) }
       end
       events.each { |e| @read_repo.update!(e) }
+      Ok(events)
     end
 
     def deserialize_event(event_hash)
@@ -236,8 +244,10 @@ class App
       if block_given?
         events = fetch_events_for(aggregate_id: aggregate_id)
         raise RecordNotFound if events.empty?
-        events = yield klass.new(events)
-        persist_events events
+        result = yield klass.new(events)
+        result.and_then do |events|
+          persist_events events
+        end
       else
         events = fetch_events_for(aggregate_id: aggregate_id)
         klass.new(events)

@@ -1,4 +1,5 @@
 require "events"
+require "result"
 require "set"
 
 module Aggregates
@@ -31,25 +32,27 @@ module Aggregates
     end
     private :apply
 
-    def seat_reserved?(seat_id)
-      @reserved_seats.include?(seat_id)
-    end
 
     def free_seat!(seat_id)
       if seat_reserved?(seat_id)
-        [Events::SeatFreed.new(aggregate_id: @id, seat_id: seat_id)]
+        Ok([Events::SeatFreed.new(aggregate_id: @id, seat_id: seat_id)])
       else
-        []
+        Ok([])
       end
     end
 
     def reserve_seat!(seat_id)
       if seat_reserved?(seat_id)
-        raise SeatAlreadyReserved.new(seat_id)
+        return Error(SeatAlreadyReserved.new(seat_id))
       end
 
-      [Events::SeatReserved.new(aggregate_id: @id, seat_id: seat_id)]
+      Ok([Events::SeatReserved.new(aggregate_id: @id, seat_id: seat_id)])
     end
+
+    private
+      def seat_reserved?(seat_id)
+        @reserved_seats.include?(seat_id)
+      end
   end
 
   class Order < DomainModel
@@ -82,48 +85,54 @@ module Aggregates
     private :apply
 
     def finish!(reduced_count, type)
-      raise CantFinishOrder.new if @reserved_seats.empty?
-      raise CantFinishOrder.new if @reserved_seats.size - reduced_count < 0
+      return Error(CantFinishOrder.new) if @reserved_seats.empty?
+      return Error(CantFinishOrder.new) if @reserved_seats.size - reduced_count < 0
 
-      [
+      Ok([
         Events::ReducedTicketsSet.new(aggregate_id: @order_id, reduced_count: reduced_count),
         (if type == "pickUpBeforehand" then Events::PickUpAtSchoolPicked.new(aggregate_id: @order_id) else Events::PickUpBeforeGigPicked.new(aggregate_id: @order_id) end),
         Events::OrderFinished.new(aggregate_id: @order_id)
-      ]
+      ])
     end
 
     def finish_and_deliver!(reduced_count, street, postal_code, city)
-      raise CantFinishOrder.new if @reserved_seats.empty?
-      raise CantFinishOrder.new if @reserved_seats.size - reduced_count < 0
+      return Error(CantFinishOrder.new) if @reserved_seats.empty?
+      return Error(CantFinishOrder.new) if @reserved_seats.size - reduced_count < 0
 
-      [
+      Ok([
         Events::ReducedTicketsSet.new(aggregate_id: @order_id, reduced_count: reduced_count),
         Events::AddressAdded.new(aggregate_id: @order_id, street: street, postal_code: postal_code, city: city),
         Events::OrderFinished.new(aggregate_id: @order_id)
-      ]
+      ])
     end
 
     def pay!
-      raise OrderAlreadyPaid if @paid
-      [Events::OrderPaid.new(aggregate_id: @order_id)]
+      return Error(OrderAlreadyPaid.new) if @paid
+      Ok([Events::OrderPaid.new(aggregate_id: @order_id)])
     end
 
     def unpay!
-      raise OrderNotYetPaid if !@paid
-      [Events::OrderUnpaid.new(aggregate_id: @order_id)]
+      return Error(OrderNotYetPaid.new) if !@paid
+      Ok([Events::OrderUnpaid.new(aggregate_id: @order_id)])
     end
 
     def cancel!(gigs)
-      return if @canceled
-      events = [Events::OrderCanceled.new(aggregate_id: @order_id)]
+      return Error(nil) if @canceled
+      events = Ok([Events::OrderCanceled.new(aggregate_id: @order_id)])
       @reserved_seats.each do |seat_id|
-        events += gigs[seat_id].free_seat!(seat_id)
+        events = events.and_then do |events|
+          gigs[seat_id].free_seat!(seat_id).and_then do |e|
+            Ok(events + e)
+          end
+        end
       end
       events
     end
 
     def reserve_seat!(gig, seat_id)
-      gig.reserve_seat!(seat_id) + [Events::SeatAddedToOrder.new(aggregate_id: @order_id, seat_id: seat_id)]
+      gig.reserve_seat!(seat_id).and_then do |events|
+        Ok(events + [Events::SeatAddedToOrder.new(aggregate_id: @order_id, seat_id: seat_id)])
+      end
     end
   end
 end

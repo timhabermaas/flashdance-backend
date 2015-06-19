@@ -24,12 +24,12 @@ end
 
 module FixtureHelpers
   def create_gig
-    internal_app.handle(Commands::CreateGig.new(title: "foo", date: DateTime.new(2014, 1, 2))).id
+    internal_app.handle(Commands::CreateGig.new(title: "foo", date: DateTime.new(2014, 1, 2))).unwrap.id
   end
 
   def create_seat(gig_id)
-    row = internal_app.handle(Commands::CreateRow.new(y: 1, number: 2, gig_id: gig_id))
-    internal_app.handle(Commands::CreateSeat.new(x: 1, number: 3, row_id: row.id, usable: true))
+    row = internal_app.handle(Commands::CreateRow.new(y: 1, number: 2, gig_id: gig_id)).unwrap
+    internal_app.handle(Commands::CreateSeat.new(x: 1, number: 3, row_id: row.id, usable: true)).unwrap
   end
 end
 
