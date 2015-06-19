@@ -252,6 +252,27 @@ RSpec.describe "orders API endpoint" do
           expect(json_response.first["reducedCount"]).to eq 1
         end
       end
+
+      context "address set" do
+        before do
+          put "/orders/#{@order_id}/finish", JSON.generate({reducedCount: 1, address: {street: "Foo Str. 2", postalCode: "12345", city: "Bartown"}})
+        end
+
+        it "returns 200 Ok" do
+          expect(last_status).to eq 200
+        end
+
+        it "adds the order to the /orders endpoint" do
+          get "/orders"
+
+          expect(json_response.size).to eq 1
+          expect(json_response.first["name"]).to eq "Hans Mustermann"
+          expect(json_response.first["email"]).to eq "hans@mustermann.de"
+          expect(json_response.first["seatIds"]).to eq [@id_1]
+          expect(json_response.first["reducedCount"]).to eq 1
+          expect(json_response.first["address"]).to eq({"street" => "Foo Str. 2", "postalCode" => "12345", "city" => "Bartown"})
+        end
+      end
     end
 
     context "order doesn't exist" do
