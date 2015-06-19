@@ -95,24 +95,16 @@ class App
       Commands::CreateSeat => handler { |c| DBModels::Seat.create(x: c.x, number: c.number, usable: c.usable, row_id: c.row_id) },
       Commands::CreateGig => handler { |c| DBModels::Gig.create(title: c.title, date: c.date) },
       Commands::UnpayOrder => handler do |c|
-        events = fetch_events_for(aggregate_id: c.order_id)
-        if events.empty?
-          raise RecordNotFound
-        else
-          order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
-          persist_events order.unpay!
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          order.unpay!
         end
       end,
       Commands::PayOrder => handler do |c|
-        events = fetch_events_for(aggregate_id: c.order_id)
-        if events.empty?
-          raise RecordNotFound
-        else
-          order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
-          persist_events order.pay!
-          order = @read_repo.orders[c.order_id]
-          @mailer.send_payment_confirmation_mail(order)
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          order.pay!
         end
+        order = @read_repo.orders[c.order_id]
+        @mailer.send_payment_confirmation_mail(order)
       end,
       Commands::StartOrder => handler do |c|
         order_id = SecureRandom.uuid
@@ -145,20 +137,16 @@ class App
         end
       end,
       Commands::FinishOrder => handler do |c|
-        order_events = fetch_events_for(aggregate_id: c.order_id)
-        raise RecordNotFound.new if order_events.empty?
-        order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
-        events = order.finish!(c.reduced_count, c.type)
-        persist_events(events)
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          events = order.finish!(c.reduced_count, c.type)
+        end
         order = @read_repo.orders[c.order_id]
         @mailer.send_confirmation_mail(order)
       end,
       Commands::FinishOrderWithAddress => handler do |c|
-        order_events = fetch_events_for(aggregate_id: c.order_id)
-        raise RecordNotFound.new if order_events.empty?
-        order = fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id)
-        events = order.finish_and_deliver!(c.reduced_count, c.street, c.postal_code, c.city)
-        persist_events(events)
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          order.finish_and_deliver!(c.reduced_count, c.street, c.postal_code, c.city)
+        end
         order = @read_repo.orders[c.order_id]
         @mailer.send_confirmation_mail(order)
       end,
