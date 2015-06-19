@@ -1,21 +1,8 @@
-require "pony"
 require "erb"
 
-class SendgridMailer
-  def initialize(username, password)
-    Pony.options = {
-      :via => :smtp,
-      :charset => 'UTF-8',
-      :via_options => {
-        :address => 'smtp.sendgrid.net',
-        :port => '587',
-        :domain => 'heroku.com',
-        :user_name => username,
-        :password => password,
-        :authentication => :plain,
-        :enable_starttls_auto => true
-      }
-    }
+class Mailer
+  def initialize(postman)
+    @postman = postman
   end
 
   def send_payment_confirmation_mail order
@@ -58,7 +45,7 @@ www.hgr-musical.de
 EOS
     body = ERB.new(body).result(binding)
 
-    Pony.mail(to: order.email, from: "ticketing@hgr-musical.de", bcc: "ticketing@hgr-musical.de", subject: "Bestätigung Zahlungseingang für Ihre Tickets zu „FLASHDANCE – The Musical“", body: body)
+    @postman.mail(to: order.email, from: "ticketing@hgr-musical.de", bcc: "ticketing@hgr-musical.de", subject: "Bestätigung Zahlungseingang für Ihre Tickets zu „FLASHDANCE – The Musical“", body: body)
   end
 
   def send_confirmation_mail order
@@ -103,7 +90,7 @@ www.hgr-musical.de
 
     body = ERB.new(body).result(binding)
 
-    Pony.mail(to: order.email, from: "ticketing@hgr-musical.de", bcc: "ticketing@hgr-musical.de", subject: "Ihre Ticket-Bestellung für „FLASHDANCE – The Musical“", body: body)
+    @postman.mail(to: order.email, from: "ticketing@hgr-musical.de", bcc: "ticketing@hgr-musical.de", subject: "Ihre Ticket-Bestellung für „FLASHDANCE – The Musical“", body: body)
   end
 
   private

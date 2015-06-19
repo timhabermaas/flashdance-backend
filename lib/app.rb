@@ -5,26 +5,15 @@ require "queries"
 require "events"
 require "aggregates"
 require "read_models"
-require "sendgrid_mailer"
+require "mailer"
+require "postmans/sendgrid_postman"
+require "postmans/print_postman"
 require "read_repository"
 
 require "sequel"
 require "securerandom"
 
 
-class PrintMailer
-  def send_payment_confirmation_mail order
-    puts "SENDING PAYMENT CONFIRMATION E-MAIL"
-    p order
-    puts
-  end
-
-  def send_confirmation_mail order
-    puts "SENDING E-MAIL WITH INFOS"
-    p order
-    puts
-  end
-end
 
 class App
   class DomainError < StandardError; end
@@ -39,11 +28,12 @@ class App
     Sequel.database_timezone = "UTC"
     Sequel::Model.plugin :timestamps
 
-    if ENV["SENDGRID_PASSWORD"] && ENV["SENDGRID_USERNAME"]
-      @mailer = SendgridMailer.new(ENV["SENDGRID_USERNAME"], ENV["SENDGRID_PASSWORD"])
+    postman = if ENV["SENDGRID_PASSWORD"] && ENV["SENDGRID_USERNAME"]
+      SendgridPostman.new(ENV["SENDGRID_USERNAME"], ENV["SENDGRID_PASSWORD"])
     else
-      @mailer = PrintMailer.new
+      PrintPostman.new
     end
+    @mailer = Mailer.new(postman)
     @users = { "user" => {password: user_pw, role: "user"}, "admin" => {password: admin_pw, role: "admin"} }
     @read_repo = ReadRepository.new
   end
