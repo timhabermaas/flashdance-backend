@@ -7,7 +7,7 @@ require "aggregates"
 require "read_models"
 require "mailer"
 require "postmans/sendgrid_postman"
-require "postmans/print_postman"
+require "postmans/collect_postman"
 require "read_repository"
 
 require "sequel"
@@ -31,7 +31,7 @@ class App
     postman = if ENV["SENDGRID_PASSWORD"] && ENV["SENDGRID_USERNAME"]
       SendgridPostman.new(ENV["SENDGRID_USERNAME"], ENV["SENDGRID_PASSWORD"])
     else
-      PrintPostman.new
+      CollectPostman.new
     end
     @mailer = Mailer.new(postman)
     @users = { "user" => {password: user_pw, role: "user"}, "admin" => {password: admin_pw, role: "admin"} }
