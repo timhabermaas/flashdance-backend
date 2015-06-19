@@ -2,13 +2,23 @@ require "events"
 require "set"
 
 module Aggregates
-  class Gig
+  class DomainModel
+    def initialize(events)
+      events.each { |e| apply(e) }
+    end
+
+    def apply
+      raise NotImplementedError
+    end
+  end
+
+  class Gig < DomainModel
     class SeatAlreadyReserved < StandardError; end
 
     def initialize(id, events)
       @id = id
       @reserved_seats = Set.new
-      events.each { |e| apply(e) }
+      super(events)
     end
 
     def apply(event)
@@ -19,6 +29,7 @@ module Aggregates
         @reserved_seats.delete(event.seat_id)
       end
     end
+    private :apply
 
     def seat_reserved?(seat_id)
       @reserved_seats.include?(seat_id)
@@ -41,7 +52,7 @@ module Aggregates
     end
   end
 
-  class Order
+  class Order < DomainModel
     class CantFinishOrder < StandardError; end
     class OrderAlreadyPaid < StandardError; end
     class OrderNotYetPaid < StandardError; end
@@ -49,7 +60,7 @@ module Aggregates
     def initialize(events)
       @reserved_seats = Set.new
       @order_id = nil
-      events.each { |e| apply(e) }
+      super(events)
     end
 
     def apply(event)
