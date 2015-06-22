@@ -118,7 +118,7 @@ module ReadModels
     end
 
     def serialize
-      __getobj__.serialize.merge(freeSeats: @free_seats)
+      {id: id, title: title, date: date.iso8601, freeSeats: @free_seats}
     end
   end
 end
