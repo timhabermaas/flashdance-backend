@@ -23,11 +23,8 @@ für Ihre Eintrittskarten zu „FLASHDANCE – The Musical“ erhalten.
 Die Tickets werden Ihnen in den nächsten Tagen an folgende Adresse zugesandt:
 <%= order.address.street %>
 <%= order.address.postal_code %> <%= order.address.city %>
-<% elsif order.pick_up_beforehand? %>
-Falls noch nicht geschehen, können Sie Ihre Karten an der HGR abholen (Mo. – Fr., 13.00 – 14.30 Uhr, Raum 234).
-Bitte halten Sie einen Ausdruck dieser E-Mail bei der Abholung bereit.
 <% else %>
-Die Tickets werden am Aufführungstag auf Ihren Namen an der Abendkasse für Sie hinterlegt.
+Sie können Ihre Karten entweder am Tag der Aufführung an der Abendkasse oder vorab an der HGR abholen (Mo. – Fr., 13.00 – 14.30 Uhr, Raum 234).
 Bitte halten Sie einen Ausdruck dieser E-Mail bei der Abholung bereit.
 <% end %>
 
