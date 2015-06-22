@@ -148,6 +148,16 @@ RSpec.describe "orders API endpoint" do
           expect(json_response.size).to eq 1
         end
       end
+
+      context "doesn't let user free seat again" do
+        before do
+          delete "/orders/#{@order_id}/reservations/#{@id_1}"
+        end
+
+        it "returns 400 Bad Request" do
+          expect(last_status).to eq 400
+        end
+      end
     end
 
     context "seat reserved by another order" do

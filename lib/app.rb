@@ -205,6 +205,9 @@ class App
       when Events::SeatAddedToOrder
         reservations[event.aggregate_id] << event.seat_id
         reservations
+      when Events::SeatRemovedFromOrder
+        reservations[event.aggregate_id].delete(event.seat_id)
+        reservations
       else
         reservations
       end
