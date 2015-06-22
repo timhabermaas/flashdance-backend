@@ -14,7 +14,7 @@ module Aggregates
   end
 
   class Gig < DomainModel
-    class SeatAlreadyReserved < StandardError; end
+    SeatAlreadyReserved = Struct.new(:seat_id)
 
     def initialize(id, events)
       @id = id
@@ -56,9 +56,9 @@ module Aggregates
   end
 
   class Order < DomainModel
-    class CantFinishOrder < StandardError; end
-    class OrderAlreadyPaid < StandardError; end
-    class OrderNotYetPaid < StandardError; end
+    class CantFinishOrder; end
+    class OrderAlreadyPaid; end
+    class OrderNotYetPaid; end
 
     def initialize(events)
       @reserved_seats = Set.new

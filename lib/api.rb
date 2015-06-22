@@ -32,6 +32,9 @@ class Api < Sinatra::Application
     when App::SeatNotReserved
       status 400
       body JSON.generate(errors: [{message: "seat not reserved by order"}])
+    when App::RecordNotFound
+      status 404
+      body JSON.generate(error: "not found")
     else
       status 400
     end
@@ -60,11 +63,6 @@ class Api < Sinatra::Application
     status 404
     headers "Content-Type" => "application/json; charset=utf-8"
     body '{"error": "not found"}'
-  end
-
-  error App::RecordNotFound do
-    status 404
-    body JSON.generate(error: "not found")
   end
 
   post "/login" do
