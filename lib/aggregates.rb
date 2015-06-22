@@ -59,6 +59,7 @@ module Aggregates
     class CantFinishOrder; end
     class OrderAlreadyPaid; end
     class OrderNotYetPaid; end
+    SeatNotReserved = Struct.new(:seat_id)
 
     def initialize(events)
       @reserved_seats = Set.new
@@ -132,6 +133,16 @@ module Aggregates
     def reserve_seat!(gig, seat_id)
       gig.reserve_seat!(seat_id).and_then do |events|
         Ok(events + [Events::SeatAddedToOrder.new(aggregate_id: @order_id, seat_id: seat_id)])
+      end
+    end
+
+    def free_seat!(gig, seat_id)
+      if @reserved_seats.include?(seat_id)
+        gig.free_seat!(seat_id).and_then do |events|
+          Ok(events + [Events::SeatRemovedFromOrder.new(aggregate_id: @order_id, seat_id: seat_id)])
+        end
+      else
+        Error(SeatNotReserved.new(seat_id))
       end
     end
   end

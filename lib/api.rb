@@ -29,7 +29,7 @@ class Api < Sinatra::Application
     when Aggregates::Order::OrderNotYetPaid
       status 400
       body JSON.generate(errors: [{message: "order not yet paid"}])
-    when App::SeatNotReserved
+    when Aggregates::Order::SeatNotReserved
       status 400
       body JSON.generate(errors: [{message: "seat not reserved by order"}])
     when App::RecordNotFound

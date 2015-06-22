@@ -22,7 +22,6 @@ class App
   include Contracts
 
   class RecordNotFound; end
-  SeatNotReserved = Struct.new(:seat_id)
 
   def initialize(database_url, user_pw, admin_pw, logging=true)
     loggers = logging ? [Logger.new($stdout)] : []
@@ -126,18 +125,9 @@ class App
       end,
       Commands::FreeSeat => handler do |c|
         gig_id = get_gig_id_from_seat(c.seat_id)
-        reservations = fetch_events_for(aggregate_id: c.order_id).reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats_for_order))[c.order_id]
-        if fetch_events_for(aggregate_id: c.order_id).empty?
-          return Error(RecordNotFound.new)
-        elsif reservations.include?(c.seat_id)
-          events = [
-            Events::SeatRemovedFromOrder.new(aggregate_id: c.order_id, seat_id: c.seat_id),
-            Events::SeatFreed.new(aggregate_id: gig_id, seat_id: c.seat_id)
-          ]
-          persist_events(events)
-          Ok(nil)
-        else
-          Error(SeatNotReserved.new(c.seat_id))
+        gig = Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id))
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          order.free_seat!(gig, c.seat_id)
         end
       end,
       Commands::FinishOrder => handler do |c|
@@ -185,32 +175,6 @@ class App
 
     def answerer(&block)
       QueryHandlers::GenericHandler.new(&block)
-    end
-
-    def update_reserved_seats(reservations, event)
-      case event
-      when Events::SeatReserved
-        reservations[event.aggregate_id] << event.seat_id
-        reservations
-      when Events::SeatFreed
-        reservations[event.aggregate_id].delete_if { |e| e == event.seat_id }
-        reservations
-      else
-        reservations
-      end
-    end
-
-    def update_reserved_seats_for_order(reservations, event)
-      case event
-      when Events::SeatAddedToOrder
-        reservations[event.aggregate_id] << event.seat_id
-        reservations
-      when Events::SeatRemovedFromOrder
-        reservations[event.aggregate_id].delete(event.seat_id)
-        reservations
-      else
-        reservations
-      end
     end
 
     def fetch_events
