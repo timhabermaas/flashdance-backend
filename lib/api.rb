@@ -115,7 +115,7 @@ class Api < Sinatra::Application
       @app.handle(Commands::FreeSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
       status 200
       body JSON.generate({})
-    rescue App::SeatNotReserved => e
+    rescue Aggregates::Order::SeatNotReserved => e
       status 400
       body JSON.generate(errors: [{message: "seat not reserved by order"}])
     end

@@ -19,7 +19,6 @@ class App
   class DomainError < StandardError; end
   class RecordNotFound < StandardError; end
   class SeatAlreadyReserved < DomainError; end
-  class SeatNotReserved < DomainError; end
 
   def initialize(database_url, user_pw, admin_pw, logging=true)
     loggers = logging ? [Logger.new($stdout)] : []
@@ -123,22 +122,15 @@ class App
       end,
       Commands::FreeSeat => handler do |c|
         gig_id = get_gig_id_from_seat(c.seat_id)
-        reservations = fetch_events_for(aggregate_id: c.order_id).reduce(Hash.new { |h, key| h[key] = Set.new}, &self.method(:update_reserved_seats_for_order))[c.order_id]
-        if fetch_events_for(aggregate_id: c.order_id).empty?
-          raise RecordNotFound.new
-        elsif reservations.include?(c.seat_id)
-          events = [
-            Events::SeatRemovedFromOrder.new(aggregate_id: c.order_id, seat_id: c.seat_id),
-            Events::SeatFreed.new(aggregate_id: gig_id, seat_id: c.seat_id)
-          ]
-          persist_events(events)
-        else
-          raise SeatNotReserved.new(c.seat_id)
+        gig = Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id))
+
+        fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
+          order.free_seat!(gig, c.seat_id)
         end
       end,
       Commands::FinishOrder => handler do |c|
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
-          events = order.finish!(c.reduced_count, c.type)
+          order.finish!(c.reduced_count, c.type)
         end
         order = @read_repo.orders[c.order_id]
         @mailer.send_confirmation_mail(order)
