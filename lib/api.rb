@@ -161,6 +161,16 @@ class Api < Sinatra::Application
     body JSON.generate(orders.map(&:serialize))
   end
 
+  delete "/unfinished_orders" do
+    orders = @app.answer(Queries::ListObsoleteOrders.new)
+    orders.each do |order|
+      @app.handle(Commands::CancelOrder.new(order_id: order.id))
+    end
+
+    status 200
+    body JSON.generate({})
+  end
+
   get "/gigs/:gig_id/reservations" do
     reservations = @app.answer(Queries::ListReservationsForGig.new(gig_id: params[:gig_id]))
 

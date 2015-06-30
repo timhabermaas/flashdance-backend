@@ -16,6 +16,8 @@ gem 'pony'
 
 gem 'newrelic_rpm'
 
+gem 'httparty'
+
 group :test do
   gem 'rspec'
   gem 'rack-test'

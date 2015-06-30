@@ -7,6 +7,8 @@ require "logger"
 require "app"
 require "commands"
 
+require "httparty"
+
 def connect
   database_url = ENV.fetch("DATABASE_URL") { "postgres://localhost:5432/flashdance_development" }
 
@@ -34,14 +36,7 @@ end
 
 namespace :cleanup do
   task :orders do
-    app = build_app
-    app.load_models!
-    app.load_events!
-    orders = app.answer(Queries::ListObsoleteOrders.new)
-    orders.each do |order|
-      puts "removing order ##{order.number}, #{order.name}"
-      build_app.handle(Commands::CancelOrder.new(order_id: order.id))
-    end
+    HTTParty.delete('https://tickets-backend-ruby.herokuapp.com/unfinished_orders')
   end
 end
 
