@@ -79,10 +79,8 @@ module Events
   end
 
   class SeatReserved < AbstractEvent
-    attribute :seat_id, String
-
     def serialize
-      {seat_id: seat_id}
+      {}
     end
   end
 
@@ -103,10 +101,8 @@ module Events
   end
 
   class SeatFreed < AbstractEvent
-    attribute :seat_id, String
-
     def serialize
-      {seat_id: seat_id}
+      {}
     end
   end
 

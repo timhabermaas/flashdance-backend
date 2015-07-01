@@ -105,7 +105,7 @@ class Api < Sinatra::Application
       @app.handle(Commands::ReserveSeat.new(order_id: params[:id], seat_id: params[:seat_id]))
       status 200
       body JSON.generate({})
-    rescue Aggregates::Gig::SeatAlreadyReserved => e
+    rescue Aggregates::SeatAvailability::SeatAlreadyReserved => e
       status 400
     end
   end

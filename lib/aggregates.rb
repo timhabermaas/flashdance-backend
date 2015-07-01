@@ -12,43 +12,33 @@ module Aggregates
     end
   end
 
-  class Gig < DomainModel
+  class SeatAvailability < DomainModel
     class SeatAlreadyReserved < StandardError; end
-
-    def initialize(id, events)
-      @id = id
-      @reserved_seats = Set.new
-      super(events)
-    end
 
     def apply(event)
       case event
       when Events::SeatReserved
-        @reserved_seats << event.seat_id
+        @reserved = true
       when Events::SeatFreed
-        @reserved_seats.delete(event.seat_id)
+        @reserved = false
       end
     end
     private :apply
 
-    def seat_reserved?(seat_id)
-      @reserved_seats.include?(seat_id)
-    end
-
-    def free_seat!(seat_id)
-      if seat_reserved?(seat_id)
-        [Events::SeatFreed.new(aggregate_id: @id, seat_id: seat_id)]
-      else
-        []
-      end
-    end
-
     def reserve_seat!(seat_id)
-      if seat_reserved?(seat_id)
+      if @reserved
         raise SeatAlreadyReserved.new(seat_id)
       end
 
-      [Events::SeatReserved.new(aggregate_id: @id, seat_id: seat_id)]
+      [Events::SeatReserved.new(aggregate_id: seat_id)]
+    end
+
+    def free_seat!(seat_id)
+      if @reserved
+        [Events::SeatFreed.new(aggregate_id: seat_id)]
+      else
+        []
+      end
     end
   end
 
@@ -114,24 +104,24 @@ module Aggregates
       [Events::OrderUnpaid.new(aggregate_id: @order_id)]
     end
 
-    def cancel!(gigs)
+    def cancel!(seat_availabilities)
       return if @canceled
       events = [Events::OrderCanceled.new(aggregate_id: @order_id)]
       @reserved_seats.each do |seat_id|
-        events += gigs[seat_id].free_seat!(seat_id)
+        events += seat_availabilities[seat_id].free_seat!(seat_id)
       end
       events
     end
 
-    def reserve_seat!(gig, seat_id)
-      gig.reserve_seat!(seat_id) + [Events::SeatAddedToOrder.new(aggregate_id: @order_id, seat_id: seat_id)]
+    def reserve_seat!(seat_availability, seat_id)
+      seat_availability.reserve_seat!(seat_id) + [Events::SeatAddedToOrder.new(aggregate_id: @order_id, seat_id: seat_id)]
     end
 
-    def free_seat!(gig, seat_id)
+    def free_seat!(seat_availability, seat_id)
       if !@reserved_seats.include?(seat_id)
         raise SeatNotReserved
       end
-      [Events::SeatRemovedFromOrder.new(aggregate_id: @order_id, seat_id: seat_id)] + gig.free_seat!(seat_id)
+      [Events::SeatRemovedFromOrder.new(aggregate_id: @order_id, seat_id: seat_id)] + seat_availability.free_seat!(seat_id)
     end
   end
 end

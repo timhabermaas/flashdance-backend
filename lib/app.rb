@@ -34,7 +34,7 @@ class App
     end
     @mailer = Mailer.new(postman)
     @users = { "user" => {password: user_pw, role: "user"}, "admin" => {password: admin_pw, role: "admin"} }
-    @read_repo = ReadRepository.new
+    @read_repo = ReadRepository.new(@connection)
   end
 
   # FIXME Remove this method by not using Sequel models.
@@ -111,21 +111,19 @@ class App
         order_id
       end,
       Commands::ReserveSeat => handler do |c|
-        gig_id = get_gig_id_from_seat(c.seat_id)
-        gig = Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id))
+        seat_availability = Aggregates::SeatAvailability.new(fetch_events_for(aggregate_id: c.seat_id))
 
         order_events = fetch_events_for(aggregate_id: c.order_id)
         raise RecordNotFound.new if order_events.empty?
         order = Aggregates::Order.new(order_events)
 
-        persist_events order.reserve_seat!(gig, c.seat_id)
+        persist_events order.reserve_seat!(seat_availability, c.seat_id)
       end,
       Commands::FreeSeat => handler do |c|
-        gig_id = get_gig_id_from_seat(c.seat_id)
-        gig = Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id))
+        seat_availability = Aggregates::SeatAvailability.new(fetch_events_for(aggregate_id: c.seat_id))
 
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
-          order.free_seat!(gig, c.seat_id)
+          order.free_seat!(seat_availability, c.seat_id)
         end
       end,
       Commands::FinishOrder => handler do |c|
@@ -144,7 +142,7 @@ class App
       end,
       Commands::CancelOrder => handler do |c|
         fetch_domain(klass: Aggregates::Order, aggregate_id: c.order_id) do |order|
-          l = lambda { |seat_id| gig_id = get_gig_id_from_seat(seat_id); Aggregates::Gig.new(gig_id, fetch_events_for(aggregate_id: gig_id)) }
+          l = lambda { |seat_id| Aggregates::SeatAvailability.new(fetch_events_for(aggregate_id: seat_id)) }
           order.cancel!(l)
         end
       end
@@ -171,29 +169,6 @@ class App
 
     def answerer(&block)
       QueryHandlers::GenericHandler.new(&block)
-    end
-
-    def update_reserved_seats(reservations, event)
-      case event
-      when Events::SeatReserved
-        reservations[event.aggregate_id] << event.seat_id
-        reservations
-      when Events::SeatFreed
-        reservations[event.aggregate_id].delete_if { |e| e == event.seat_id }
-        reservations
-      else
-        reservations
-      end
-    end
-
-    def update_reserved_seats_for_order(reservations, event)
-      case event
-      when Events::SeatAddedToOrder
-        reservations[event.aggregate_id] << event.seat_id
-        reservations
-      else
-        reservations
-      end
     end
 
     def fetch_events
@@ -234,9 +209,5 @@ class App
         events = fetch_events_for(aggregate_id: aggregate_id)
         klass.new(events)
       end
-    end
-
-    def get_gig_id_from_seat(seat_id)
-      @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => seat_id).first[:gig_id]
     end
 end

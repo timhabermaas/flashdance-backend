@@ -41,6 +41,16 @@ namespace :cleanup do
 end
 
 namespace :db do
+  task :migrate_events do
+    connection = connect
+    connection[:events].each do |e|
+      if e[:type] == "Events::SeatFreed" || e[:type] == "Events::SeatReserved"
+        seat_id = JSON.parse(e[:body])["seat_id"]
+        connection[:events].where(id: e[:id]).update(body: "{}", aggregate_id: seat_id)
+      end
+    end
+  end
+
   task :migrate do
     build_app.migrate!
   end

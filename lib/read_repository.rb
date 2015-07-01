@@ -2,7 +2,8 @@ class ReadRepository
   attr_reader :orders,
               :reservations
 
-  def initialize
+  def initialize(connection)
+    @connection = connection
     reset!
   end
 
@@ -40,9 +41,18 @@ class ReadRepository
     when Events::AddressAdded
       @orders[event.aggregate_id].address = ReadModels::Address.new(event.street, event.postal_code, event.city)
     when Events::SeatReserved
-      @reservations[event.aggregate_id] << ReadModels::Reservation.new(event.seat_id)
+      seat_id = event.aggregate_id
+      gig_id = get_gig_id_from_seat(seat_id)
+      @reservations[gig_id] << ReadModels::Reservation.new(seat_id)
     when Events::SeatFreed
-      @reservations[event.aggregate_id].delete_if { |r| r.seat_id == event.seat_id }
+      seat_id = event.aggregate_id
+      gig_id = get_gig_id_from_seat(seat_id)
+      @reservations[gig_id].delete_if { |r| r.seat_id == seat_id }
     end
   end
+
+  private
+    def get_gig_id_from_seat(seat_id)
+      @connection[:rows].join(:seats, row_id: :id).where(Sequel.qualify(:seats, :id) => seat_id).first[:gig_id]
+    end
 end
