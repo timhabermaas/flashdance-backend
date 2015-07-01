@@ -24,4 +24,7 @@ module Queries
   class ListRows < AbstractQuery
     attribute :gig_id, String
   end
+
+  class ListGigs < AbstractQuery
+  end
 end

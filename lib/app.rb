@@ -80,10 +80,17 @@ class App
         all_seats - reserved_seats
       },
       Queries::ListSeats => answerer { |q|
+        raise RecordNotFound.new unless DBModels::Gig[q.gig_id]
         @connection[:seats].join(:rows, id: :row_id).select(Sequel.qualify(:seats, :id), :x, Sequel.qualify(:seats, :number), :usable, Sequel.qualify(:rows, :number).as(:row_number)).where(Sequel.qualify(:rows, :gig_id) => q.gig_id).all
       },
       Queries::ListRows => answerer { |q|
         @connection[:rows].where(gig_id: q.gig_id).all
+      },
+      Queries::ListGigs => answerer { |q|
+        gigs = DBModels::Gig.order(:date)
+        gigs = gigs.map do |g|
+          ReadModels::Gig.new(g, self.answer(Queries::GetFreeSeats.new(gig_id: g.id)))
+        end
       },
     }.fetch(query.class).answer(query)
   end

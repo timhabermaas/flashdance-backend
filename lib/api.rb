@@ -54,25 +54,20 @@ class Api < Sinatra::Application
   end
 
   get "/gigs/:gig_id/seats" do
-    if DBModels::Gig[params[:gig_id]]
-      status 200
-      seats = @app.answer(Queries::ListSeats.new(gig_id: params[:gig_id]))
-      rows = @app.answer(Queries::ListRows.new(gig_id: params[:gig_id])).map do |r|
-        {y: r[:y], number: r[:number]}
-      end
-      seats = seats.map do |s|
-        {x: s[:x], number: s[:number], row: s[:row_number], id: s[:id], usable: s[:usable]}
-      end
-      body JSON.generate({seats: seats, rows: rows})
-    else
-      status 404
-      body '{"error": "not found"}'
+    seats = @app.answer(Queries::ListSeats.new(gig_id: params[:gig_id]))
+    rows = @app.answer(Queries::ListRows.new(gig_id: params[:gig_id])).map do |r|
+      {y: r[:y], number: r[:number]}
     end
+    seats = seats.map do |s|
+      {x: s[:x], number: s[:number], row: s[:row_number], id: s[:id], usable: s[:usable]}
+    end
+    status 200
+    body JSON.generate({seats: seats, rows: rows})
   end
 
   get "/gigs" do
-    gigs = DBModels::Gig.order(:date)
-    gigs = gigs.map { |g| ReadModels::Gig.new(g, @app.answer(Queries::GetFreeSeats.new(gig_id: g.id))) }
+    gigs = @app.answer(Queries::ListGigs.new)
+    status 200
     body JSON.generate(gigs.map(&:serialize))
   end
 
