@@ -51,28 +51,15 @@ EOS
     body = <<-EOS
 Vielen Dank für Ihre Kartenreservierung zu „FLASHDANCE – The Musical“ der HGR Musical AG.
 
-<% if order.pick_up_beforehand? %>
-Bitte holen Sie Ihre Karten gegen Barzahlung innerhalb der nächsten 5 Werktage an der HGR, Raum 234 ab oder
-überweisen Sie den Betrag von
-<% else %>
-Bitte überweisen Sie den Betrag von
-<% end %>
+Bitte holen Sie Ihre Karten in den kommenden Tagen oder an der Abendkasse gegen Barzahlung des Betrags von
 
 <%= format_price order.total_cost %>
 
-innerhalb der nächsten 5 Werktage unter Angabe der Nummer
+unter Angabe der Nummer
 
 <%= order.number %>
 
-als Betreff auf folgendes Konto:
-
-Förderverein der Hermann-Greiner-Realschule Neckarsulm
-IBAN DE64 6205 0000 0001 3930 60
-BIC HEISDE66XXX
-KSK Heilbronn
-
-Bitte achten Sie bei der Bezahlung auf die Einhaltung des Zeitfensters, da ihre Reservierung ansonsten erlischt.
-Das Team der HGR Musical AG bedankt sich und wünscht Ihnen viel Spaß in den Eighties mit „FLASHDANCE“!
+ab.
 
 
 
